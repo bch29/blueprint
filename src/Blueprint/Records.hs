@@ -1,3 +1,6 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DataKinds              #-}
 {-# LANGUAGE GADTs                  #-}
 {-# LANGUAGE KindSignatures         #-}
@@ -5,46 +8,29 @@
 {-# LANGUAGE TypeFamilies           #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeOperators          #-}
+{-# LANGUAGE TypeInType             #-}
 
-module Types where
+module Blueprint.Records where
 
 import           WebPrelude
 
 import           Data.Int
 
-import           Data.Singletons.TypeLits
 -- import           Data.Vinyl
-import           GHC.TypeLits
+-- import           Data.Vinyl.TypeLevel hiding (Nat)
+-- import qualified Data.Vinyl.TypeLevel as V
 
-import Schema
+-- import           Data.Singletons.Prelude
+import           Data.Kind (Type)
 
---------------------------------------------------------------------------------
---  Vectors
---------------------------------------------------------------------------------
-
-data Vec a n where
-  VNil :: Vec a 0
-  VCons :: a -> Vec a n -> Vec a (1 + n)
-
-data VarVec a n where
-  VNil' :: VarVec a n
-  VCons' :: a -> VarVec a n -> VarVec a (1 + n)
-
---------------------------------------------------------------------------------
---  Semantic Types
---------------------------------------------------------------------------------
-
-type Bitvec = Vec Bool
-type VarBitvec = VarVec Bool
-type Charvec = Vec Char
-type VarCharvec = VarVec Char
+import           Blueprint.Schema
 
 --------------------------------------------------------------------------------
 --  Haskell types for PostgreSQL types
 --------------------------------------------------------------------------------
 
 -- | Injective mapping of PostgreSQL types to the corresponding Haskell types.
-type family PgTypeOf (pgty :: PgType) = (ty :: *) | ty -> pgty where
+type family PgTypeOf (pgty :: PgType) = (ty :: Type) | ty -> pgty where
   PgTypeOf 'PgBoolean         = Bool
   PgTypeOf 'PgSmallint        = Int16
   PgTypeOf 'PgInteger         = Int32

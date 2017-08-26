@@ -1,151 +1,203 @@
-{-# LANGUAGE DataKinds              #-}
-{-# LANGUAGE GADTs                  #-}
-{-# LANGUAGE KindSignatures         #-}
-{-# LANGUAGE PatternSynonyms        #-}
-{-# LANGUAGE TypeFamilies           #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
-{-# LANGUAGE TypeOperators          #-}
+{-# LANGUAGE DefaultSignatures         #-}
+{-# LANGUAGE EmptyCase                 #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE GADTs                     #-}
+{-# LANGUAGE InstanceSigs              #-}
+{-# LANGUAGE KindSignatures            #-}
+{-# LANGUAGE RankNTypes                #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE TypeInType                #-}
+{-# LANGUAGE TypeOperators             #-}
+{-# LANGUAGE UndecidableInstances      #-}
 
 module Blueprint.Schema where
 
+import           Data.Singletons.Prelude
+import           Data.Singletons.TH
 import           Data.Singletons.TypeLits
-import           GHC.TypeLits
 
 --------------------------------------------------------------------------------
 --  Postgres Types
 --------------------------------------------------------------------------------
 
-type Precision = Nat
-type Scale = Nat
+-- type Precision = Number
+-- type Scale = Number
 
-data PgType =
+type Name = Symbol
 
-  -- Basic types --
+$(singletons
+ [d|
 
-    PgBoolean         -- ^ Boolean values
-  | PgSmallint        -- ^ 2-byte signed integers
-  | PgInteger         -- ^ 4-byte signed integers
-  | PgBigint          -- ^ 8-byte signed integers
-  | PgReal            -- ^ 4-byte floating point numbers
-  | PgDoublePrecision -- ^ 8-byte floating point numbers
+  type Precision' nat = nat
+  type Scale' nat = nat
 
-  -- Serial numbers --
+  -- | The kind of PostgreSQL data types. In practice use 'PgType'.
+  data PgType' nat =
+    -- Basic types --
+      PgBoolean         -- ^ Boolean values
+    | PgSmallint        -- ^ 2-byte signed integers
+    | PgInteger         -- ^ 4-byte signed integers
+    | PgBigint          -- ^ 8-byte signed integers
+    | PgReal            -- ^ 4-byte floating point numbers
+    | PgDoublePrecision -- ^ 8-byte floating point numbers
 
-  | PgSmallserial -- ^ Auto-incrementing 2-byte integers
-  | PgSerial      -- ^ Auto-incrementing 4-byte integers
-  | PgBigserial   -- ^ Auto-incrementing 8-byte integers
+    -- Serial numbers --
 
-  -- Other numbers --
+    | PgSmallserial -- ^ Auto-incrementing 2-byte integers
+    | PgSerial      -- ^ Auto-incrementing 4-byte integers
+    | PgBigserial   -- ^ Auto-incrementing 8-byte integers
 
-  | PgMoney -- ^ Currency amount
-  | PgNumeric Precision Scale
-    -- ^ Arbitrary-precision decimal number with given number of digits total
-    -- ('Precision') and number of digits after the decimal point ('Scale').
+    -- Other numbers --
 
-  -- Sized vectors --
+    | PgMoney -- ^ Currency amount
+    | PgNumeric (Precision' nat) (Scale' nat)
+      -- ^ Arbitrary-precision decimal number with given number of digits total
+      -- ('prec') and number of digits after the decimal point ('scale').
 
-  | PgBit Nat              -- ^ Fixed-length bit vector
-  | PgBitVarying Nat       -- ^ Variable-length bit vector
-  | PgCharacter Nat        -- ^ Fixed-length character vector
-  | PgCharacterVarying Nat -- ^ Variable-length character vector
+    -- Sized vectors --
 
-  -- Binary blobs --
+    | PgBit nat              -- ^ Fixed-length bit vector
+    | PgBitVarying nat       -- ^ Variable-length bit vector
+    | PgCharacter nat        -- ^ Fixed-length character vector
+    | PgCharacterVarying nat -- ^ Variable-length character vector
 
-  | PgBytea -- ^ Byte array
-  | PgText  -- ^ Text blob
+    -- Binary blobs --
 
-  | PgJson     -- ^ Textual JSON
-  | PgJsonb    -- ^ Binary JSON
-  | PgXml      -- ^ XML data
-  | PgTsquery  -- ^ Text search query
-  | PgTsvector -- ^ Text search document
+    | PgBytea -- ^ byte array
+    | PgText  -- ^ text blob
 
-  -- Shapes on a plane --
+    | PgJson     -- ^ textual JSON
+    | PgJsonb    -- ^ Binary JSON
+    | PgXml      -- ^ XML data
+    | PgTsquery  -- ^ text search query
+    | PgTsvector -- ^ text search document
 
-  | PgBox     -- ^ rectangle on a plane
-  | PgCircle  -- ^ circle on a plane
-  | PgLine    -- ^ infinite line on a plane
-  | PgLseg    -- ^ line segment on a plane
-  | PgPath    -- ^ geometric path on a plane
-  | PgPoint   -- ^ geometric point on a plane
-  | PgPolygon -- ^ closed geometric path on a plane
+    -- Shapes on a plane --
 
-  -- Networking --
+    | PgBox     -- ^ rectangle on a plane
+    | PgCircle  -- ^ circle on a plane
+    | PgLine    -- ^ infinite line on a plane
+    | PgLseg    -- ^ line segment on a plane
+    | PgPath    -- ^ geometric path on a plane
+    | PgPoint   -- ^ geometric point on a plane
+    | PgPolygon -- ^ closed geometric path on a plane
 
-  | PgCidr    -- ^ IPv4 or IPv6 network address
-  | PgInet    -- ^ IPv4 or IPv6 host address
-  | PgMacaddr -- ^ MAC (Media Access Control) address
+    -- Networking --
 
-  -- Times and dates --
+    | PgCidr    -- ^ IPv4 or IPv6 network address
+    | PgInet    -- ^ IPv4 or IPv6 host address
+    | PgMacaddr -- ^ MAC (Media Access Control) address
 
-  | PgDate -- ^ calendar date (year, month, day)
-  | PgTimeWithoutTimeZone (Maybe Precision)
-    -- ^ time of day (no time zone)
-  | PgTimeWithTimeZone (Maybe Precision)
-    -- ^ time of day, including time zone
-  | PgTimestampWithoutTimeZone (Maybe Precision)
-    -- ^ date and time (no time zone)
-  | PgTimestampWithTimeZone (Maybe Precision)
-    -- ^ date and time, including time zone
-  | PgInterval (Maybe Precision)
-    -- ^ time span
+    -- Times and dates --
 
-  -- TODO: interval quantity units
+    | PgDate -- ^ calendar date (year, month, day)
+    | PgTimeWithoutTimeZone (Maybe (Precision' nat))
+      -- ^ time of day (no time zone)
+    | PgTimeWithTimeZone (Maybe (Precision' nat))
+      -- ^ time of day, including time zone
+    | PgTimestampWithoutTimeZone (Maybe (Precision' nat))
+      -- ^ date and time (no time zone)
+    | PgTimestampWithTimeZone (Maybe (Precision' nat))
+      -- ^ date and time, including time zone
+    | PgInterval (Maybe (Precision' nat))
+      -- ^ time span
 
-  -- Misc --
+    -- TODO: interval quantity units
 
-  | PgPgLsn        -- ^ PostgreSQL Log Sequence Number
-  | PgTxidSnapshot -- ^ user-level transaction ID snapshot
-  | PgUuid         -- ^ Universal unique identifier
+    -- Misc --
 
---------------------------------------------------------------------------------
---  Synonyms for common types
---------------------------------------------------------------------------------
+    | PgPgLsn        -- ^ PostgreSQL Log Sequence Number
+    | PgTxidSnapshot -- ^ user-level transaction ID snapshot
+    | PgUuid         -- ^ Universal unique identifier
 
-type PgTimestamp = 'PgTimestampWithTimeZone 'Nothing
-type PgTimestamp' = 'PgTimestampWithoutTimeZone 'Nothing
+  --------------------------------------------------------------------------------
+  --  Constraints
+  --------------------------------------------------------------------------------
 
---------------------------------------------------------------------------------
---  Constraints
---------------------------------------------------------------------------------
+  data PgTableRef
 
-data PgTableRef
+  data PgConstraint =
+      PgUnique
+    | PgNotNull
+    | PgPrimaryKey
+    | PgReferences PgTableRef
 
-data PgConstraint =
-    PgUnique
-  | PgNotNull
-  | PgPrimaryKey
-  | PgReferences PgTableRef
+  -- | The kind of PostgreSQL column type specifications. In practice use
+  -- 'PgTypeSpec'.
+  data PgTypeSpec' nat
+    = PgSimple (PgType' nat)
+    | PgConstrained (PgType' nat) [PgConstraint]
 
-data PgTypeSpec
-  = PgSimple PgType
-  | PgConstrained PgType [PgConstraint]
+  --------------------------------------------------------------------------------
+  --  Tables
+  --------------------------------------------------------------------------------
 
---------------------------------------------------------------------------------
---  Tables
---------------------------------------------------------------------------------
+  -- | The kind of PostgreSQL columns. In practice use 'PgColumn'.
+  data PgColumn' nat name =
+    PgColumn name (PgTypeSpec' nat)
 
-data PgColumn = PgColumn Symbol PgTypeSpec
+  -- | The kind of PostgreSQL tables. In practice use 'PgTable'.
+  data PgTable' nat name =
+    PgTable name [PgColumn' nat name]
 
-infix 8 :&
-infix 4 :*
-infix 4 :@
+  -- | The kind of PostgreSQL schemas. In practice use 'PgSchema'.
+  data PgSchema' nat name =
+    PgSchema name [PgTable' nat name]
 
--- | A type with the given list of constraints.
-type ty :& constraints = 'PgConstrained ty constraints
+ |])
 
--- | A column with with the given name and constrained type.
-type name :* ts = 'PgColumn name ts
+type Precision = Precision' Nat
+type Scale = Scale' Nat
 
--- | A non-null column with the given name and type
-type name :@ ty = name :* ty :& '[ 'PgNotNull ]
+type PgType     = PgType' Nat
+type PgTypeSpec = PgTypeSpec' Nat
+type PgColumn   = PgColumn' Nat Name
+type PgTable    = PgTable' Nat Name
+type PgSchema   = PgSchema' Nat Name
 
--- | An unconstrained (so nullable) column with the given name and type
-type name :? ty = name :* 'PgSimple ty
+type SPgType     = SPgType'
+type SPgTypeSpec = SPgTypeSpec'
+type SPgColumn   = SPgColumn'
+type SPgTable    = SPgTable'
+type SPgSchema   = SPgSchema'
+
+$(singletonsOnly
+ [d|
+
+  infix 8 -&
+  infix 4 -*
+  infix 4 -@
+  infix 4 -?
+
+  -- | A type with the given list of constraints.
+  (-&) :: PgType -> [PgConstraint] -> PgTypeSpec
+  ty -& constraints = PgConstrained ty constraints
+
+  -- | A column with with the given name and constrained type.
+  (-*) :: Name -> PgTypeSpec -> PgColumn
+  name -* ts = PgColumn name ts
+
+  -- | A non-null column with the given name and type
+  (-@) :: Name -> PgType -> PgColumn
+  name -@ ty = name -* (ty -& [PgNotNull])
+
+  -- | An unconstrained (so nullable) column with the given name and type
+  (-?) :: Name -> PgType -> PgColumn
+  name -? ty = name -* PgSimple ty
 
 
--- | A table in the database
-data PgTable = PgTable Symbol [PgColumn]
+  --------------------------------------------------------------------------------
+  --  Synonyms for common PostgreSQL types
+  --------------------------------------------------------------------------------
 
--- | A schema containing multiple tables
-data PgSchema = PgSchema Symbol [PgTable]
+  pgTimestamp :: PgType
+  pgTimestamp = PgTimestampWithTimeZone Nothing
+
+  pgTimestamp' :: PgType
+  pgTimestamp' = PgTimestampWithoutTimeZone Nothing
+
+ |])
