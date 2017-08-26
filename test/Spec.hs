@@ -10,56 +10,50 @@ module Main where
 
 import WebPrelude
 
-import Data.Singletons
+import Opaleye
 
-import Blueprint.Schema
-import Blueprint.Query
+import Blueprint.Internal.Schema
+import Blueprint.Internal.Records
 
 
-type Users = 'PgTable "users"
-  '[ "id"           :-@ 'PgUuid
-   , "name"         :-@ 'PgText
-   , "age"          :-@ 'PgInteger
-   , "phone_number" :-@ 'PgCharacterVarying 20
+type Users = 'SchemaTable "users"
+  '[ "id"           :@ UUID
+   , "name"         :@ Text
+   , "age"          :@ Int
+   , "phone_number" :@ Maybe Text
    ]
 
-type Products = 'PgTable "products"
-  '[ "id"    :-@ 'PgUuid
-   , "name"  :-@ 'PgText
-   , "price" :-@ 'PgReal
+type Products = 'SchemaTable "products"
+  '[ "id"    :@ UUID
+   , "name"  :@ Text
+   , "price" :@ Double
    ]
 
-type Purchases = 'PgTable "purchases"
-  '[ "user_id"    :-@ 'PgUuid
-   , "product_id" :-@ 'PgUuid
-   , "date"       :-@ PgTimestamp'
+type Purchases = 'SchemaTable "purchases"
+  '[ "user_id"    :@ UUID
+   , "product_id" :@ UUID
+   , "date"       :@ UTCTime
    ]
 
 
-type PublicSchema = 'PgSchema "public"
+type PublicSchema = 'Schema "public"
   '[ Users
    , Products
    , Purchases
    ]
 
 
-qUserPurchasedItems =
-  (table @Users .*.
-   (table @Products
-    & renames @[ "id" :=> "products_product_id"
-               , "name" :=> "product_name"
-               ]
-   ) .*. table @Purchases)
-  & restrict (eqCols @"user_id" @"id")
-  & restrict (eqCols @"product_id" @"products_product_id")
-  & project @["id", "name", "age", "phone_number", "product_name"]
+usersTable :: Table (ColumnsOf Users) (ColumnsOf Users)
+usersTable = table'
+
+productsTable :: Table (ColumnsOf Products) (ColumnsOf Products)
+productsTable = table'
+
+purchasesTable :: Table (ColumnsOf Purchases) (ColumnsOf Purchases)
+purchasesTable = table'
 
 
-cUserPurchasedItems = sQueryColumns qUserPurchasedItems
-
-
-schemaSing :: Sing PublicSchema
-schemaSing = sing
+-- usersQuery = queryTable usersTable
 
 
 main :: IO ()

@@ -16,8 +16,14 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     WebPrelude
-                     , Blueprint.Schema
-                     , Blueprint.Records
+                     -- , Blueprint.Schema
+                     -- , Blueprint.Records
+                     , Blueprint.AsColumn
+                     -- , Blueprint.Vinyl
+  -- other-modules:
+                     , Blueprint.Internal.Schema
+                     , Blueprint.Internal.Records
+                     , Blueprint.Internal.Vinyl
   build-depends:       base >= 4.7 && < 5
                      , vinyl >= 0.5 && < 1.0
                      , text
@@ -29,6 +35,9 @@ library
                      , lens
                      , singletons
                      , opaleye
+                     , case-insensitive >= 1.2
+                     , profunctors >= 5.2
+                     , product-profunctors >= 0.8
   ghc-options: -Wall
   default-language:    Haskell2010
 
