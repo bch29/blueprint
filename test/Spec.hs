@@ -1,19 +1,19 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE RankNTypes       #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators    #-}
 
 {-# OPTIONS_GHC -fno-warn-unticked-promoted-constructors #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 module Main where
 
-import WebPrelude
+import           WebPrelude
 
-import Opaleye
+import           Opaleye
 
-import Blueprint.Internal.Schema
-import Blueprint.Internal.Records
+import           Blueprint.Internal.Records
+import           Blueprint.Internal.Schema
 
 
 type Users = 'SchemaTable "users"
@@ -53,7 +53,7 @@ purchasesTable :: Table (ColumnsOf Purchases) (ColumnsOf Purchases)
 purchasesTable = table'
 
 
--- usersQuery = queryTable usersTable
+usersQuery = queryTable usersTable
 
 
 main :: IO ()

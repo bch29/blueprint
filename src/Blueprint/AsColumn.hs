@@ -46,7 +46,7 @@ instance AsColumn Bool where type SqlType Bool = PGBool
 instance AsColumn Int16 where type SqlType Int16 = PGInt2
 instance AsColumn Int32 where type SqlType Int32 = PGInt4
 instance AsColumn Int64 where type SqlType Int64 = PGInt8
-instance AsColumn Int where type SqlType Int = PGInt8
+instance AsColumn Int where type SqlType Int = PGInt4
 
 instance AsColumn Float where type SqlType Float = PGFloat4
 instance AsColumn Double where type SqlType Double = PGFloat8
