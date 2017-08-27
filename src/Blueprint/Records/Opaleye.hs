@@ -24,7 +24,9 @@ import           Blueprint.Records
 --  Constructing Opaleye Tables
 --------------------------------------------------------------------------------
 
-type TableOf table = Table (ColSqlOf Column table) (ColSqlOf Column table)
+type ColumnsOf table = ColSqlOf Column table
+
+type TableOf table = Table (ColumnsOf table) (ColumnsOf table)
 
 table' :: SingI table => TableOf table
 table' = makeTable (dimap getColSql ColSql . required) Table

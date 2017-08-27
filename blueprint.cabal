@@ -15,7 +15,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Blueprint.Schema
+  exposed-modules:     Blueprint
+                     , Blueprint.Schema
                      , Blueprint.Records
                      , Blueprint.Records.Opaleye
                      , Blueprint.AsColumn
