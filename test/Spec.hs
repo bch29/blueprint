@@ -2,37 +2,34 @@
 {-# LANGUAGE RankNTypes       #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators    #-}
+{-# LANGUAGE OverloadedLabels    #-}
 
 {-# OPTIONS_GHC -fno-warn-unticked-promoted-constructors #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 module Main where
 
-import           WebPrelude
-
 import           Opaleye
+import           Bookkeeper
 
-import           Blueprint.Internal.Records
-import           Blueprint.Internal.Schema
+import           Blueprint
 
 
 type Users = 'SchemaTable "users"
-  '[ "id"           :@ UUID
-   , "name"         :@ Text
+  '[ "id"           :@ Int
    , "age"          :@ Int
-   , "phone_number" :@ Maybe Text
+   , "phone_number" :@ Int
    ]
 
 type Products = 'SchemaTable "products"
-  '[ "id"    :@ UUID
-   , "name"  :@ Text
-   , "price" :@ Double
+  '[ "price" :@ Double
+   , "id"    :@ Int
    ]
 
 type Purchases = 'SchemaTable "purchases"
-  '[ "user_id"    :@ UUID
-   , "product_id" :@ UUID
-   , "date"       :@ UTCTime
+  '[ "user_id"    :@ Int
+   , "product_id" :@ Int
+   , "date"       :@ Int
    ]
 
 
@@ -41,6 +38,13 @@ type PublicSchema = 'Schema "public"
    , Products
    , Purchases
    ]
+
+
+testProduct :: RecordOf Products
+testProduct = fromBook $
+  emptyBook
+  & #price =: (0.0 :: Double)
+  & #id    =: (0 :: Int)
 
 
 usersTable :: Table (ColumnsOf Users) (ColumnsOf Users)

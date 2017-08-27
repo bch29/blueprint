@@ -1,5 +1,6 @@
 module Blueprint.Schema
   ( SchemaColumn(..)
+  , (:@)
   , SchemaTable(..)
   , Schema(..)
   ) where

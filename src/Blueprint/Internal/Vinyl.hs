@@ -24,35 +24,46 @@ import           Data.Profunctor
 import           Data.Profunctor.Product
 import           Data.Profunctor.Product.Default
 
-import           Data.Singletons
-import           Data.Singletons.Prelude.List
+import           Data.Singletons.Prelude.List (Sing(..))
+
+import           Data.Type.Functor.Map                (Map (..), Mapping(..))
+-- import qualified Data.Type.Functor.Map as Map
+-- import qualified Data.Type.Set as Set
+
+--------------------------------------------------------------------------------
+--  Product profunctor adaptors for type maps
+--------------------------------------------------------------------------------
+
+pMap
+  :: (ProductProfunctor p)
+  => Map (Procompose' f g p) as
+  -> p (Map f as) (Map g as)
+pMap = \case
+  Empty -> purePP Empty
+  Ext k (Procompose' v) s ->
+    dimap mhead (Ext k) v ****
+    lmap mtail (pMap s)
+
+mhead :: Map f ((k ':-> a) ': m) -> f a
+mhead (Ext _ v _) = v
+
+mtail :: Map f (x ': m) -> Map f m
+mtail (Ext _ _ s) = s
 
 --------------------------------------------------------------------------------
 --  Product profunctor adaptors for Vinyl records
 --------------------------------------------------------------------------------
 
 pRec
-  :: (ProductProfunctor p, SingI as, SingI bs)
-  => Rec2 (Procompose f g p) as bs
-  -> p (Rec f as) (Rec g bs)
-pRec = pRecSing sing sing
-
-pRecSing
   :: (ProductProfunctor p)
-  => Sing as
-  -> Sing bs
-  -> Rec2 (Procompose f g p) as bs
-  -> p (Rec f as) (Rec g bs)
-pRecSing as bs = case (as, bs) of
-  (SNil, SNil) -> \case
-    R2Nil -> purePP RNil
+  => Rec (Procompose' f g p) as
+  -> p (Rec f as) (Rec g as)
+pRec = \case
+    RNil -> purePP RNil
 
-  (SCons _ as', SCons _ bs') -> \case
-    Procompose x `R2Cons` xs ->
+    Procompose' x :& xs ->
       dimap rhead (:&) x ****
-      lmap rtail (pRecSing as' bs' xs)
-  (SCons _ _, SNil) -> \case -- absurd
-  (SNil, SCons _ _) -> \case -- absurd
+      lmap rtail (pRec xs)
 
 --------------------------------------------------------------------------------
 --  Product profunctor default for Vinyl records
@@ -74,6 +85,7 @@ defRecSing as bs = case (as, bs) of
 --------------------------------------------------------------------------------
 
 newtype Procompose f g p a b = Procompose { unProcompose :: p (f a) (g b) }
+newtype Procompose' f g p a = Procompose' { getProcompose' :: p (f a) (g a) }
 
 instance
   ( Default p (f a) (g b)
@@ -108,10 +120,6 @@ rhead (x :& _) = x
 
 rtail :: Rec f (a ': as) -> Rec f as
 rtail (_ :& xs) = xs
-
-data Rec2 (f :: k1 -> k2 -> *) as bs where
-  R2Nil :: Rec2 f '[] '[]
-  R2Cons :: f a b -> Rec2 f as bs -> Rec2 f (a ': as) (b ': bs)
 
 type family SatPair c ab :: Constraint where
   SatPair c '(a, b) = c a b

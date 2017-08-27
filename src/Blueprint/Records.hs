@@ -27,7 +27,6 @@ import           Data.Singletons.Prelude.List
 import           Blueprint.AsColumn
 import           Blueprint.Internal.Schema
 import           Blueprint.Internal.Vinyl
-import           Blueprint.Labels
 
 --------------------------------------------------------------------------------
 -- * Functors over SQL types
@@ -111,7 +110,7 @@ makeTable f g = case (sing :: Sing table) of
   SSchemaTable sName sCols ->
     g (Text.unpack $ fromSing sName)
       ( dimap getTRec TRec
-      . pRecSing sCols sCols
+      . pRec
       . makeColumns (dimap getOverCol OverCol . f)
       $ sCols)
 
@@ -119,26 +118,9 @@ makeColumns
   :: (ProductProfunctor p)
   => (forall col cname cty. col ~ (cname :@ cty) => String -> p (f col) (g col))
   -> Sing (cols :: [SchemaColumn])
-  -> Rec2 (Procompose f g p) cols cols
+  -> Rec (Procompose' f g p) cols
 makeColumns f = \case
-  SNil -> R2Nil
+  SNil -> RNil
   SCons (SSchemaColumn sName _) sCols ->
-    Procompose (f (Text.unpack $ fromSing sName))
-    `R2Cons` makeColumns f sCols
-
---------------------------------------------------------------------------------
--- * Sugar for building table records
-
-infixr 1 &:
-infix 2 =:
-
-(&:)
-  :: OverCol f col -> TRec f ('SchemaTable name cols)
-  -> TRec f ('SchemaTable name (col ': cols))
-h &: (TRec t) = TRec (h :& t)
-
-tnil :: TRec f ('SchemaTable name '[])
-tnil = TRec RNil
-
-(=:) :: ColumnAccessor cname -> ty -> OverCol Identity (cname :@ ty)
-_ =: x = OverCol (Identity x)
+    Procompose' (f (Text.unpack $ fromSing sName))
+    :& makeColumns f sCols
