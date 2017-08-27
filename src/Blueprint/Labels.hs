@@ -10,7 +10,7 @@ module Blueprint.Labels where
 import           GHC.OverloadedLabels
 import           GHC.TypeLits
 
-data LabelProxy (n :: Symbol) = LabelProxy
+data ColumnAccessor (n :: Symbol) = ColumnAccessor
 
-instance (n ~ n') => IsLabel n (LabelProxy n') where
-  fromLabel = LabelProxy
+instance (n ~ n') => IsLabel n (ColumnAccessor n') where
+  fromLabel = ColumnAccessor

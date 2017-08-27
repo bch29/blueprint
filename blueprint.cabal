@@ -15,17 +15,14 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     WebPrelude
-                     -- , Blueprint.Schema
-                     -- , Blueprint.Records
+  exposed-modules:     Blueprint.Schema
+                     , Blueprint.Records
+                     , Blueprint.Records.Opaleye
                      , Blueprint.AsColumn
                      , Blueprint.Labels
-                     -- , Blueprint.Vinyl
-  -- other-modules:
+                     , Blueprint.Lens
                      , Blueprint.Internal.Schema
-                     , Blueprint.Internal.Records
                      , Blueprint.Internal.Vinyl
-                     , Blueprint.Internal.Lens
   build-depends:       base >= 4.7 && < 5
                      , vinyl >= 0.5 && < 1.0
                      , text
