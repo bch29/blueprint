@@ -1,19 +1,22 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE DataKinds      #-}
-{-# LANGUAGE EmptyCase      #-}
-{-# LANGUAGE GADTs          #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE LambdaCase     #-}
-{-# LANGUAGE PolyKinds      #-}
-{-# LANGUAGE TypeOperators  #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE EmptyCase                  #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures             #-}
+{-# LANGUAGE LambdaCase                 #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE PatternSynonyms            #-}
+{-# LANGUAGE PolyKinds                  #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE UndecidableInstances       #-}
 
 module Blueprint.Internal.Vinyl where
 
-import Data.Kind (Constraint)
+import           Data.Kind                       (Constraint)
+
+import qualified Data.Functor.Identity           as Id
 
 import           Data.Vinyl
 
@@ -23,6 +26,10 @@ import           Data.Profunctor.Product.Default
 
 import           Data.Singletons
 import           Data.Singletons.Prelude.List
+
+--------------------------------------------------------------------------------
+--  Product profunctor adaptors for Vinyl records
+--------------------------------------------------------------------------------
 
 pRec
   :: (ProductProfunctor p, SingI as, SingI bs)
@@ -47,46 +54,58 @@ pRecSing as bs = case (as, bs) of
   (SCons _ _, SNil) -> \case -- absurd
   (SNil, SCons _ _) -> \case -- absurd
 
-
-type family SatPair c ab :: Constraint where
-  SatPair c '(a, b) = c a b
-
-type family AllConstrained2 c as bs :: Constraint where
-  AllConstrained2 c '[] '[] = ()
-  AllConstrained2 c (a ': as) (b ': bs) = (c a b, AllConstrained2 c as bs)
-
-type family AllConstrained2' f g c as bs :: Constraint where
-  AllConstrained2' f g c '[] '[] = ()
-  AllConstrained2' f g c (a ': as) (b ': bs) =
-    (c (f a) (g b), AllConstrained2' f g c as bs)
-
+--------------------------------------------------------------------------------
+--  Product profunctor default for Vinyl records
+--------------------------------------------------------------------------------
 
 defRecSing
-  :: forall as bs p f g.
-     ( ProductProfunctor p
+  :: ( ProductProfunctor p
      , AllConstrained2' f g (Default p) as bs)
   => Sing as -> Sing bs -> p (Rec f as) (Rec g bs)
 defRecSing as bs = case (as, bs) of
   (SNil, SNil) -> purePP RNil
-  (SCons (_ :: Sing a) (as' :: Sing as'), SCons (_ :: Sing b) (bs' :: Sing bs')) ->
-    let x = def :: p (f a) (g b)
-        xs = defRecSing as' bs' :: p (Rec f as') (Rec g bs')
-    in dimap rhead (:&) x **** lmap rtail xs
+  (SCons _ as', SCons _ bs') ->
+    dimap rhead (:&) def **** lmap rtail (defRecSing as' bs')
   (SCons _ _, SNil) -> error "absurd"
   (SNil, SCons _ _) -> error "absurd"
 
+--------------------------------------------------------------------------------
+--  Pro/functor newtypes
+--------------------------------------------------------------------------------
 
--- instance
---   ( ProductProfunctor p
---   , AllConstrained2' f g (Default p) as bs
---   , SingI as, SingI bs
---   ) => Default p (Rec f as) (Rec g bs) where
+newtype Procompose f g p a b = Procompose { unProcompose :: p (f a) (g b) }
 
---   def = defRecSing sing sing
+instance
+  ( Default p (f a) (g b)
+  ) => Default (Procompose f g p) a b where
+  def = Procompose def
 
+instance (Functor f, Functor g, Profunctor p)
+  => Profunctor (Procompose f g p) where
+  dimap f g = Procompose . dimap (fmap f) (fmap g) . unProcompose
+
+
+newtype Identity a = Identity' (Id.Identity a)
+  deriving (Functor, Applicative, Monad)
+
+pattern Identity :: a -> Identity a
+pattern Identity a = Identity' (Id.Identity a)
+
+getIdentity :: Identity a -> a
+getIdentity (Identity' (Id.Identity a)) = a
+
+instance
+  ( Profunctor p , Default p a b
+  ) => Default p (Identity a) b where
+  def = dimap getIdentity id def
+
+instance {-# INCOHERENT #-}
+  (Profunctor p, Default p a b
+  ) => Default p a (Identity b) where
+  def = dimap id Identity def
 
 --------------------------------------------------------------------------------
---  Util
+--  Other
 --------------------------------------------------------------------------------
 
 rhead :: Rec f (a ': as) -> f a
@@ -99,4 +118,14 @@ data Rec2 (f :: k1 -> k2 -> *) as bs where
   R2Nil :: Rec2 f '[] '[]
   R2Cons :: f a b -> Rec2 f as bs -> Rec2 f (a ': as) (b ': bs)
 
-newtype Procompose f g p a b = Procompose { unProcompose :: p (f a) (g b) }
+type family SatPair c ab :: Constraint where
+  SatPair c '(a, b) = c a b
+
+type family AllConstrained2 c as bs :: Constraint where
+  AllConstrained2 c '[] '[] = ()
+  AllConstrained2 c (a ': as) (b ': bs) = (c a b, AllConstrained2 c as bs)
+
+type family AllConstrained2' f g c as bs :: Constraint where
+  AllConstrained2' f g c '[] '[] = ()
+  AllConstrained2' f g c (a ': as) (b ': bs) =
+    (c (f a) (g b), AllConstrained2' f g c as bs)

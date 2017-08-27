@@ -24,12 +24,12 @@ import           Blueprint.Records
 --  Constructing Opaleye Tables
 --------------------------------------------------------------------------------
 
-type ColumnsOf table = ColSqlOf Column table
+type ColumnsOf table = OverSqlOf Column table
 
 type TableOf table = Table (ColumnsOf table) (ColumnsOf table)
 
 table' :: SingI table => TableOf table
-table' = makeTable (dimap getColSql ColSql . required) Table
+table' = makeTable (dimap getOverSql OverSql . required) Table
 
 tableFor
   :: SingI table

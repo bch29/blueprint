@@ -15,7 +15,7 @@ module Blueprint.Lens
   , ColumnType
   ) where
 
-import           Control.Lens
+import           Control.Lens.Lens
 
 import           Data.Vinyl
 
@@ -23,6 +23,7 @@ import           Data.Singletons
 
 import           Blueprint.AsColumn
 import           Blueprint.Internal.Schema
+import           Blueprint.Internal.Vinyl
 import           Blueprint.Labels
 import           Blueprint.Records
 
@@ -34,8 +35,8 @@ col
      , ColumnType cname cols ~ cty
      )
   => ColumnAccessor cname
-  -> Lens' (ColSqlOf f table) (f (SqlType cty))
-col proxy = colGeneral proxy . colSql proxy
+  -> Lens' (OverSqlOf f table) (f (SqlType cty))
+col proxy = trecCol proxy . overCol . overSql
 
 -- | Select an opaque column type from a table record using @TypeApplications@.
 col'
@@ -45,7 +46,7 @@ col'
      , RElem col cols i
      , ColumnType cname cols ~ cty
      )
-  => Lens' (ColSqlOf f table) (f (SqlType cty))
+  => Lens' (OverSqlOf f table) (f (SqlType cty))
 col' = col (ColumnAccessor :: ColumnAccessor cname)
 
 val
@@ -56,7 +57,7 @@ val
      )
   => ColumnAccessor cname
   -> Lens' (RecordOf table) cty
-val proxy = colGeneral proxy . colVal proxy
+val proxy = trecCol proxy . overCol . _Identity
 
 val'
   :: forall cname cty col table tname cols i.
@@ -80,6 +81,18 @@ type family ColumnType cname cols where
 --  Internal
 --------------------------------------------------------------------------------
 
+_Identity :: Lens (Identity a) (Identity b) a b
+_Identity = lens getIdentity (const Identity)
+
+overCol :: Lens (OverCol f (cname :@ a)) (OverCol g (cname :@ b)) (f a) (g b)
+overCol = lens getOverCol (const OverCol)
+
+overSql :: Lens (OverSql f a) (OverSql g b) (f (SqlType a)) (g (SqlType b))
+overSql = lens getOverSql (const OverSql)
+
+trec :: Lens' (TRec f ('SchemaTable name cols)) (Rec (OverCol f) cols)
+trec = lens getTRec (const TRec)
+
 recCol
   :: ( col ~ (cname :@ cty)
      , RElem col cols i
@@ -88,21 +101,12 @@ recCol
   => proxy cname -> Lens' (Rec f cols) (f (cname :@ cty))
 recCol _ = rlens Proxy
 
-colGeneral
+trecCol
   :: ( table ~ 'SchemaTable tname cols
      , col ~ (cname :@ cty)
      , RElem col cols i
      , ColumnType cname cols ~ cty
      )
   => proxy cname
-  -> Lens' (TRec f table) (f col)
-colGeneral _ = trec . recCol Proxy
-
-colSql :: proxy cname -> Lens' (ColSql f (cname :@ ty)) (f (SqlType ty))
-colSql _ = lens getColSql (const ColSql)
-
-colVal :: proxy cname -> Lens' (ColVal (cname :@ ty)) ty
-colVal _ = lens getColVal (const ColVal)
-
-trec :: Lens' (TRec f ('SchemaTable name cols)) (Rec f cols)
-trec = lens getTRec (const TRec)
+  -> Lens' (TRec f table) (OverCol f col)
+trecCol _ = trec . recCol Proxy

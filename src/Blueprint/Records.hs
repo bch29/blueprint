@@ -1,6 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE AllowAmbiguousTypes        #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE LambdaCase                 #-}
@@ -28,58 +27,63 @@ import           Blueprint.Internal.Vinyl
 import           Blueprint.Labels
 
 --------------------------------------------------------------------------------
--- * Column records
+-- * Functors over SQL types
 
-data ColSql f (col :: SchemaColumn) where
-  ColSql :: f (SqlType ty) -> ColSql f (name :@ ty)
+newtype OverSql f a = OverSql { getOverSql :: f (SqlType a) }
 
-getColSql :: ColSql f (name :@ ty) -> f (SqlType ty)
-getColSql = \case ColSql x -> x
+instance
+  ( Profunctor p
+  , Default p (f (SqlType a)) b
+  ) => Default p (OverSql f a) b where
 
-data ColVal (col :: SchemaColumn) where
-  ColVal :: ty -> ColVal (name :@ ty)
+  def = dimap getOverSql id def
 
-getColVal :: ColVal (name :@ ty) -> ty
-getColVal = \case ColVal x -> x
+instance {-# INCOHERENT #-}
+  ( Profunctor p
+  , Default p a (f (SqlType b))
+  ) => Default p a (OverSql f b) where
 
-instance ( col1 ~ (name1 :@ ty1)
-         , col2 ~ (name2 :@ ty2)
-         , Profunctor p
-         , Default p (f (SqlType ty1)) (g (SqlType ty2))
-         ) =>
-         Default p (ColSql f col1) (ColSql g col2) where
-  def = dimap getColSql ColSql def
+  def = dimap id OverSql def
 
-instance ( col1 ~ (name1 :@ ty1)
-         , col2 ~ (name2 :@ ty2)
-         , Profunctor p
-         , Default p (f (SqlType ty1)) ty2
-         ) => Default p (ColSql f col1) (ColVal col2) where
-  def = dimap getColSql ColVal def
+--------------------------------------------------------------------------------
+-- * Functors over types contained in column schemas
 
-instance ( col1 ~ (name1 :@ ty1)
-         , col2 ~ (name2 :@ ty2)
-         , Profunctor p
-         , Default p ty1 (f (SqlType ty2))
-         ) => Default p (ColVal col1) (ColSql f col2) where
-  def = dimap getColVal ColSql def
+data OverCol f (col :: SchemaColumn) where
+  OverCol :: { getOverCol :: f ty } -> OverCol f (cname :@ ty)
+
+instance
+  ( col ~ (cname :@ a)
+  , Profunctor p
+  , Default p (f a) b
+  ) => Default p (OverCol f col) b where
+
+  def = dimap getOverCol id def
+
+instance {-# INCOHERENT #-}
+  ( col ~ (cname :@ b)
+  , Profunctor p
+  , Default p a (f b)
+  ) => Default p a (OverCol f col) where
+
+  def = dimap id OverCol def
 
 --------------------------------------------------------------------------------
 -- * Table records
 
 data TRec f table where
-  TRec :: Rec f colSql -> TRec f ('SchemaTable name colSql)
+  TRec
+    :: { getTRec :: Rec (OverCol f) cols }
+    -> TRec f ('SchemaTable name cols)
 
-getTRec :: TRec f ('SchemaTable name colSql) -> Rec f colSql
-getTRec = \case TRec x -> x
 
-type ColSqlOf f table = TRec (ColSql f) table
-type RecordOf table = TRec ColVal table
+type OverSqlOf f table = TRec (OverSql f) table
+type RecordOf table = TRec Identity table
+
 
 instance ( ProductProfunctor p
-         , AllConstrained2' f g (Default p) colSql colSql
-         , table ~ 'SchemaTable name colSql
-         , SingI colSql
+         , AllConstrained2' (OverCol f) (OverCol g) (Default p) cols cols
+         , table ~ 'SchemaTable name cols
+         , SingI cols
          ) => Default p (TRec f table) (TRec g table) where
 
   def = dimap getTRec TRec (defRecSing sing sing)
@@ -90,8 +94,7 @@ instance ( ProductProfunctor p
 makeTable
   :: forall table p p' f g. (SingI table, ProductProfunctor p)
 
-  => (forall col cname cty . col ~ (cname :@ cty)
-      => String -> p (f col) (g col))
+  => (forall col. String -> p (f col) (g col))
   -- ^ Lift each column into the profunctor @p@.
 
   -> (String -> p (TRec f table) (TRec g table)
@@ -102,8 +105,10 @@ makeTable
 makeTable f g = case (sing :: Sing table) of
   SSchemaTable sName sCols ->
     g (Text.unpack $ fromSing sName)
-      (dimap getTRec TRec $ pRecSing sCols sCols
-       (makeColumns f sCols))
+      ( dimap getTRec TRec
+      . pRecSing sCols sCols
+      . makeColumns (dimap getOverCol OverCol . f)
+      $ sCols)
 
 makeColumns
   :: (ProductProfunctor p)
@@ -123,12 +128,12 @@ infixr 1 &:
 infix 2 =:
 
 (&:)
-  :: f col -> TRec f ('SchemaTable name cols)
+  :: OverCol f col -> TRec f ('SchemaTable name cols)
   -> TRec f ('SchemaTable name (col ': cols))
 h &: (TRec t) = TRec (h :& t)
 
 tnil :: TRec f ('SchemaTable name '[])
 tnil = TRec RNil
 
-(=:) :: ColumnAccessor cname -> ty -> ColVal (cname :@ ty)
-_ =: x = ColVal x
+(=:) :: ColumnAccessor cname -> ty -> OverCol Identity (cname :@ ty)
+_ =: x = OverCol (Identity x)
