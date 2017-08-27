@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
@@ -31,14 +32,14 @@ import           Blueprint.Labels
 
 newtype OverSql f a = OverSql { getOverSql :: f (SqlType a) }
 
-instance
+instance {-# INCOHERENT #-}
   ( Profunctor p
   , Default p (f (SqlType a)) b
   ) => Default p (OverSql f a) b where
 
   def = dimap getOverSql id def
 
-instance {-# INCOHERENT #-}
+instance {-# OVERLAPPABLE #-}
   ( Profunctor p
   , Default p a (f (SqlType b))
   ) => Default p a (OverSql f b) where
@@ -51,7 +52,7 @@ instance {-# INCOHERENT #-}
 data OverCol f (col :: SchemaColumn) where
   OverCol :: { getOverCol :: f ty } -> OverCol f (cname :@ ty)
 
-instance
+instance {-# INCOHERENT #-}
   ( col ~ (cname :@ a)
   , Profunctor p
   , Default p (f a) b
@@ -59,7 +60,7 @@ instance
 
   def = dimap getOverCol id def
 
-instance {-# INCOHERENT #-}
+instance {-# OVERLAPPABLE #-}
   ( col ~ (cname :@ b)
   , Profunctor p
   , Default p a (f b)

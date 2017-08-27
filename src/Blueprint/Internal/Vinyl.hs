@@ -2,7 +2,7 @@
 {-# LANGUAGE EmptyCase                  #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE KindSignatures             #-}
 {-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
@@ -85,21 +85,15 @@ instance (Functor f, Functor g, Profunctor p)
   dimap f g = Procompose . dimap (fmap f) (fmap g) . unProcompose
 
 
-newtype Identity a = Identity' (Id.Identity a)
-  deriving (Functor, Applicative, Monad)
+newtype Identity a = Identity { getIdentity :: a}
+  deriving (Functor)
 
-pattern Identity :: a -> Identity a
-pattern Identity a = Identity' (Id.Identity a)
-
-getIdentity :: Identity a -> a
-getIdentity (Identity' (Id.Identity a)) = a
-
-instance
+instance {-# INCOHERENT #-}
   ( Profunctor p , Default p a b
   ) => Default p (Identity a) b where
   def = dimap getIdentity id def
 
-instance {-# INCOHERENT #-}
+instance {-# OVERLAPPABLE #-}
   (Profunctor p, Default p a b
   ) => Default p a (Identity b) where
   def = dimap id Identity def
