@@ -3,6 +3,8 @@
 {-# LANGUAGE TypeInType    #-}
 {-# LANGUAGE TypeOperators #-}
 
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Blueprint.Internal.Schema where
 
 import           Data.Kind                   (Type)
@@ -10,13 +12,14 @@ import           Data.Kind                   (Type)
 import           Data.Singletons.Prelude
 import           Data.Singletons.TypeRepStar ()
 
+import Data.Type.Map (Mapping(..))
+
 -- | The kind of schema columns.
-data SchemaColumn
-  = SchemaColumn Symbol Type
+type SchemaColumn = Mapping Symbol Type
 
 
 -- | Shorthand for constructing a type of kind 'SchemaColumn'.
-type (:@) = 'SchemaColumn
+type k :@ v = k ':-> v
 
 
 -- | The kind of schema tables.
@@ -33,7 +36,7 @@ data Schema
 --  Demoted Types
 --------------------------------------------------------------------------------
 
-data SchemaColumnRep = CDR (Demote Symbol) (Demote Type)
+data MappingRep k v = MR (Demote k) (Demote v)
 data SchemaTableRep = TDR (Demote Symbol) [Demote SchemaColumn]
 data SchemaRep = SDR (Demote Symbol) [Demote SchemaTable]
 
@@ -41,8 +44,8 @@ data SchemaRep = SDR (Demote Symbol) [Demote SchemaTable]
 --  'Sing' instances
 --------------------------------------------------------------------------------
 
-data instance Sing (column :: SchemaColumn) where
-  SSchemaColumn :: Sing name -> Sing ty -> Sing (name :@ ty)
+data instance Sing (m :: Mapping k v) where
+  SMapping :: Sing k -> Sing v -> Sing (k ':-> v)
 
 data instance Sing (table :: SchemaTable) where
   SSchemaTable :: Sing name -> Sing cols -> Sing ('SchemaTable name cols)
@@ -50,14 +53,14 @@ data instance Sing (table :: SchemaTable) where
 data instance Sing (schema :: Schema) where
   SSchema :: Sing name -> Sing tables -> Sing ('Schema name tables)
 
-instance SingKind SchemaColumn where
-  type Demote SchemaColumn = SchemaColumnRep
+instance (SingKind k, SingKind v) => SingKind (Mapping k v) where
+  type Demote (Mapping k v) = MappingRep k v
 
-  fromSing (SSchemaColumn name ty) = CDR (fromSing name) (fromSing ty)
+  fromSing (SMapping name ty) = MR (fromSing name) (fromSing ty)
 
-  toSing (CDR name ty) =
-    case (toSing name, toSing ty) of
-      (SomeSing name', SomeSing ty') -> SomeSing (SSchemaColumn name' ty')
+  toSing (MR k v) =
+    case (toSing k, toSing v) of
+      (SomeSing k', SomeSing v') -> SomeSing (SMapping k' v')
 
 instance SingKind SchemaTable where
   type Demote SchemaTable = SchemaTableRep
@@ -78,8 +81,8 @@ instance SingKind Schema where
       (SomeSing name', SomeSing tables') -> SomeSing (SSchema name' tables')
 
 
-instance (SingI name, SingI ty) => SingI ('SchemaColumn name ty) where
-  sing = SSchemaColumn sing sing
+instance (SingI k, SingI v) => SingI (k ':-> v) where
+  sing = SMapping sing sing
 
 instance (SingI name, SingI cols) => SingI ('SchemaTable name cols) where
   sing = SSchemaTable sing sing

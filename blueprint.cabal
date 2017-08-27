@@ -24,9 +24,8 @@ library
                      , Blueprint.Labels
                      , Blueprint.Lens
                      , Blueprint.Internal.Schema
-                     , Blueprint.Internal.Vinyl
+                     , Blueprint.Internal.Map
   build-depends:       base >= 4.7 && < 5
-                     , vinyl >= 0.5 && < 1.0
                      , text
                      , bytestring
                      , containers
@@ -39,7 +38,6 @@ library
                      , case-insensitive >= 1.2
                      , profunctors >= 5.2
                      , product-profunctors >= 0.8
-                     , bookkeeper
                      , type-level-sets >= 0.8
   ghc-options: -Wall
   default-language:    Haskell2010

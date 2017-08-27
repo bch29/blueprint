@@ -1,112 +1,101 @@
-{-# LANGUAGE AllowAmbiguousTypes        #-}
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase                 #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE RankNTypes             #-}
+{-# LANGUAGE TypeFamilies           #-}
+{-# LANGUAGE TypeInType             #-}
+{-# LANGUAGE TypeOperators          #-}
+{-# LANGUAGE UndecidableInstances   #-}
 
 module Blueprint.Lens
-  ( col
-  , col'
-  , val
-  , val'
-  , ColumnType
+  (
+    -- * Lenses for tables
+    clens
+  , vlens
+  , tlens
+    -- * Lenses for maps
+  , AtKey(..)
+  , MapFind
+  , Found(..)
+  , FoundType
   ) where
 
 import           Control.Lens.Lens
 
-import           Data.Vinyl
-
-import           Data.Singletons
-
 import           Blueprint.AsColumn
 import           Blueprint.Internal.Schema
-import           Blueprint.Internal.Vinyl
-import           Blueprint.Labels
+import           Blueprint.Internal.Map
 import           Blueprint.Records
+import           Blueprint.Labels
 
--- | Select an opaque column type from a table record using a label.
-col
+import           Data.Type.Functor.Map
+
+
+--------------------------------------------------------------------------------
+--  Lenses for tables
+--------------------------------------------------------------------------------
+
+tlens
   :: ( table ~ 'SchemaTable tname cols
-     , col ~ (cname :@ cty)
-     , RElem col cols i
-     , ColumnType cname cols ~ cty
-     )
-  => ColumnAccessor cname
-  -> Lens' (OverSqlOf f table) (f (SqlType cty))
-col proxy = trecCol proxy . overCol . overSql
+     , AtKey k cols r a)
+  => ColKey k
+  -> Lens' (TRec f table) (f a)
+tlens p = trecLens . klens p
 
--- | Select an opaque column type from a table record using @TypeApplications@.
-col'
-  :: forall cname cty col f table tname cols i.
-     ( table ~ 'SchemaTable tname cols
-     , col ~ (cname :@ cty)
-     , RElem col cols i
-     , ColumnType cname cols ~ cty
-     )
-  => Lens' (OverSqlOf f table) (f (SqlType cty))
-col' = col (ColumnAccessor :: ColumnAccessor cname)
-
-val
+vlens
   :: ( table ~ 'SchemaTable tname cols
-     , col ~ (cname :@ cty)
-     , RElem col cols i
-     , ColumnType cname cols ~ cty
-     )
-  => ColumnAccessor cname
-  -> Lens' (RecordOf table) cty
-val proxy = trecCol proxy . overCol . _Identity
+     , AtKey k cols r a)
+  => ColKey k
+  -> Lens' (RecordOf table) a
+vlens p = tlens p . _Identity
 
-val'
-  :: forall cname cty col table tname cols i.
-     ( table ~ 'SchemaTable tname cols
-     , col ~ (cname :@ cty)
-     , RElem col cols i
-     , ColumnType cname cols ~ cty
-     )
-  => Lens' (RecordOf table) cty
-val' = val (ColumnAccessor :: ColumnAccessor cname)
+clens
+  :: ( table ~ 'SchemaTable tname cols
+     , AtKey k cols r a)
+  => ColKey k
+  -> Lens' (OverSqlOf f table) (f (SqlType a))
+clens p = tlens p . overSqlLens
 
 --------------------------------------------------------------------------------
---  Type families
+--  Lenses for newtypes
 --------------------------------------------------------------------------------
 
-type family ColumnType cname cols where
-  ColumnType cname ((cname :@ ty) ': cols) = ty
-  ColumnType cname (_ ': cols) = ColumnType cname cols
+trecLens
+  :: (table ~ 'SchemaTable tname cols)
+  => Lens (TRec f table) (TRec g table) (Map f cols) (Map g cols)
+trecLens f (TRec s) = fmap TRec (f s)
 
---------------------------------------------------------------------------------
---  Internal
---------------------------------------------------------------------------------
+overSqlLens
+  :: Lens (OverSql f a) (OverSql g a) (f (SqlType a)) (g (SqlType a))
+overSqlLens f (OverSql x) = fmap OverSql (f x)
 
 _Identity :: Lens (Identity a) (Identity b) a b
-_Identity = lens getIdentity (const Identity)
+_Identity f (Identity x) = fmap Identity (f x)
 
-overCol :: Lens (OverCol f (cname :@ a)) (OverCol g (cname :@ b)) (f a) (g b)
-overCol = lens getOverCol (const OverCol)
+--------------------------------------------------------------------------------
+--  Lenses for maps
+--------------------------------------------------------------------------------
 
-overSql :: Lens (OverSql f a) (OverSql g b) (f (SqlType a)) (g (SqlType b))
-overSql = lens getOverSql (const OverSql)
+class (MapFind k m ~ r, FoundType r ~ a) => AtKey k m r a where
+  klens :: proxy k -> Lens' (Map f m) (f a)
 
-trec :: Lens' (TRec f ('SchemaTable name cols)) (Rec (OverCol f) cols)
-trec = lens getTRec (const TRec)
+instance AtKey k ((k ':-> a) ': m) ('Here a) a where
+  klens _ f (Ext k v s) = fmap (\v' -> Ext k v' s) (f v)
 
-recCol
-  :: ( col ~ (cname :@ cty)
-     , RElem col cols i
-     , cty ~ ColumnType cname cols
-     )
-  => proxy cname -> Lens' (Rec f cols) (f (cname :@ cty))
-recCol _ = rlens Proxy
+instance
+  ( AtKey k m r a
+  , MapFind k (kvp ': m) ~ ('There r)
+  ) => AtKey k (kvp ': m) ('There r) a where
+  klens p f (Ext k v s) = fmap (Ext k v) (klens p f s)
 
-trecCol
-  :: ( table ~ 'SchemaTable tname cols
-     , col ~ (cname :@ cty)
-     , RElem col cols i
-     , ColumnType cname cols ~ cty
-     )
-  => proxy cname
-  -> Lens' (TRec f table) (OverCol f col)
-trecCol _ = trec . recCol Proxy
+type family MapFind k m where
+  MapFind k ((k ':-> a) ': m) = 'Here a
+  MapFind k (_ ': m) = 'There (MapFind k m)
+
+data Found v
+  = Here v
+  | There (Found v)
+
+type family FoundType r where
+  FoundType ('Here a) = a
+  FoundType ('There r) = FoundType r
