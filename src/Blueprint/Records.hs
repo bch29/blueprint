@@ -1,5 +1,8 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE LambdaCase                 #-}
@@ -11,6 +14,8 @@
 module Blueprint.Records where
 
 import qualified Data.Text                       as Text
+import qualified Data.Functor.Identity           as Id
+import           Data.Coerce
 
 import           Data.Vinyl
 
@@ -25,6 +30,27 @@ import           Blueprint.AsColumn
 import           Blueprint.Internal.Schema
 import           Blueprint.Internal.Vinyl
 import           Blueprint.Labels
+
+
+newtype Identity a = Identity' (Id.Identity a)
+  deriving (Functor, Applicative, Monad)
+
+pattern Identity :: a -> Identity a
+pattern Identity a <- Identity' (Id.Identity a)
+  where Identity = coerce
+
+getIdentity :: Identity a -> a
+getIdentity = coerce
+
+instance
+  ( Profunctor p , Default p a b
+  ) => Default p (Identity a) b where
+  def = dimap getIdentity id def
+
+instance {-# INCOHERENT #-}
+  (Profunctor p, Default p a b
+  ) => Default p a (Identity b) where
+  def = dimap id Identity def
 
 --------------------------------------------------------------------------------
 -- * Functors over SQL types
@@ -48,8 +74,10 @@ instance {-# INCOHERENT #-}
 --------------------------------------------------------------------------------
 -- * Functors over types contained in column schemas
 
-data OverCol f (col :: SchemaColumn) where
-  OverCol :: { getOverCol :: f ty } -> OverCol f (cname :@ ty)
+type family AppCol f col where
+  AppCol f (_ :@ a) = f a
+
+newtype OverCol f col = OverCol { getOverCol :: AppCol f col }
 
 instance
   ( col ~ (cname :@ a)
@@ -70,10 +98,10 @@ instance {-# INCOHERENT #-}
 --------------------------------------------------------------------------------
 -- * Table records
 
-data TRec f table where
-  TRec
-    :: { getTRec :: Rec (OverCol f) cols }
-    -> TRec f ('SchemaTable name cols)
+type family AppTable f table where
+  AppTable f ('SchemaTable _ cols) = f cols
+
+newtype TRec f table = TRec { getTRec :: AppTable (Rec (OverCol f)) table }
 
 
 type OverSqlOf f table = TRec (OverSql f) table

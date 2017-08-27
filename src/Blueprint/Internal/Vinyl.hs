@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE EmptyCase                  #-}
 {-# LANGUAGE FlexibleInstances          #-}
@@ -15,6 +16,7 @@
 module Blueprint.Internal.Vinyl where
 
 import           Data.Kind                       (Constraint)
+import           Data.Coerce
 
 import qualified Data.Functor.Identity           as Id
 
@@ -82,27 +84,9 @@ instance
 
 instance (Functor f, Functor g, Profunctor p)
   => Profunctor (Procompose f g p) where
-  dimap f g = Procompose . dimap (fmap f) (fmap g) . unProcompose
 
-
-newtype Identity a = Identity' (Id.Identity a)
-  deriving (Functor, Applicative, Monad)
-
-pattern Identity :: a -> Identity a
-pattern Identity a = Identity' (Id.Identity a)
-
-getIdentity :: Identity a -> a
-getIdentity (Identity' (Id.Identity a)) = a
-
-instance
-  ( Profunctor p , Default p a b
-  ) => Default p (Identity a) b where
-  def = dimap getIdentity id def
-
-instance {-# INCOHERENT #-}
-  (Profunctor p, Default p a b
-  ) => Default p a (Identity b) where
-  def = dimap id Identity def
+  dimap (f :: a -> b) (g :: c -> d) =
+    coerce (dimap (fmap f) (fmap g) :: p (f b) (g c) -> p (f a) (g d))
 
 --------------------------------------------------------------------------------
 --  Other
