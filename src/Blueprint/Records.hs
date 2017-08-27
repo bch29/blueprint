@@ -1,6 +1,8 @@
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE LambdaCase                 #-}
@@ -49,8 +51,10 @@ instance {-# OVERLAPPABLE #-}
 --------------------------------------------------------------------------------
 -- * Functors over types contained in column schemas
 
-data OverCol f (col :: SchemaColumn) where
-  OverCol :: { getOverCol :: f ty } -> OverCol f (cname :@ ty)
+type family AppCol f col where
+  AppCol f (_ :@ a) = f a
+
+newtype OverCol f col = OverCol { getOverCol :: AppCol f col }
 
 instance {-# INCOHERENT #-}
   ( col ~ (cname :@ a)
@@ -71,10 +75,10 @@ instance {-# OVERLAPPABLE #-}
 --------------------------------------------------------------------------------
 -- * Table records
 
-data TRec f table where
-  TRec
-    :: { getTRec :: Rec (OverCol f) cols }
-    -> TRec f ('SchemaTable name cols)
+type family AppTable f table where
+  AppTable f ('SchemaTable _ cols) = f cols
+
+newtype TRec f table = TRec { getTRec :: AppTable (Rec (OverCol f)) table }
 
 
 type OverSqlOf f table = TRec (OverSql f) table
