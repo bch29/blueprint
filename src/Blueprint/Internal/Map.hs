@@ -17,16 +17,21 @@ module Blueprint.Internal.Map where
 
 import           Data.Coerce
 import           Data.Kind                       (Constraint)
+import           GHC.TypeLits                    (Symbol)
 
-import           Data.Profunctor
+import Data.Functor.Const (Const(..))
+
+import           Data.Profunctor                 (Profunctor (..))
 import           Data.Profunctor.Product
 import           Data.Profunctor.Product.Default
 
 import           Blueprint.Internal.Schema
 
+import           Data.Singletons.Decide          ((:~:) (..), Decision (..),
+                                                  SDecide (..))
 import           Data.Singletons.Prelude.List    (Sing (..))
 
-import           Data.Type.Functor.Map           (Map (..), Mapping (..),
+import           Data.Type.Functor.Map           (Map (..), Mapping (..), Nub,
                                                   Var (..))
 
 --------------------------------------------------------------------------------
@@ -55,6 +60,30 @@ defMapSing as = case as of
   SNil -> purePP Empty
   (SCons (SMapping sk _) as') ->
     dimap mhead (Ext (varOf sk)) def **** lmap mtail (defMapSing as')
+
+--------------------------------------------------------------------------------
+--  Nub for singletons
+--------------------------------------------------------------------------------
+
+-- singToMap :: Sing as -> Map (Const ()) as
+-- singToMap = \case
+--   SNil -> Empty
+--   SCons (SMapping k _) xs -> Ext (varOf k) (Const ()) (singToMap xs)
+
+-- mapToSing :: Map f as -> Sing as
+-- mapToSing = \case
+--   Empty -> SNil
+--   Ext 
+
+
+-- sNub :: Sing (as :: [Mapping Symbol v]) -> Sing (Nub as)
+-- sNub = \case
+--   SNil -> SNil
+--   SCons x SNil -> SCons x SNil
+--   SCons (SMapping sk sv) xs@(SCons (SMapping sk' sv') xs') ->
+--     case sk %~ sk' of
+--       Proved Refl -> _
+--       Disproved f -> _
 
 --------------------------------------------------------------------------------
 --  Pro/functor newtypes

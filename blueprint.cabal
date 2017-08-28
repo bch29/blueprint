@@ -19,7 +19,6 @@ library
                      , Blueprint.Schema
                      , Blueprint.Records
                      , Blueprint.Records.Opaleye
-                     , Blueprint.Records.Bookkeeper
                      , Blueprint.AsColumn
                      , Blueprint.Labels
                      , Blueprint.Lens
