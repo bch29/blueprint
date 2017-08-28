@@ -17,10 +17,17 @@ cabal-version:  >= 1.10
 extra-source-files:
     README.md
 
-executable blueprint-opaleye
-  main-is: Main.hs
+library
   hs-source-dirs:
       src
   build-depends:
       base >= 4.7 && < 5
+    , blueprint
+    , opaleye
+  exposed-modules:
+      Blueprint.AsColumn
+      Blueprint.InternalSchema
+      Blueprint.Opaleye
+      Blueprint.Other
+      Blueprint.Schema
   default-language: Haskell2010

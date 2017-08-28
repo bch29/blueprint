@@ -8,7 +8,8 @@
 {-# LANGUAGE TypeInType           #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Blueprint.Records.Aeson where
+
+module Blueprint.Aeson where
 
 import           Data.Kind                    (Type)
 

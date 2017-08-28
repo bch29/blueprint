@@ -37,6 +37,7 @@ resolver: nightly-2017-08-24
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - core/
+- opaleye/
 - website/
 - location: ../typemap/
   extra-dep: true

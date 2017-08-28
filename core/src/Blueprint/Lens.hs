@@ -12,8 +12,7 @@
 module Blueprint.Lens
   (
     -- * Lenses for tables
-    clens
-  , vlens
+    vlens
   , HasFLens(..)
     -- * Lenses for maps
   , HasKeyAt(..)
@@ -25,10 +24,8 @@ import GHC.TypeLits (Symbol)
 
 import           Control.Lens.Lens
 
-import           Blueprint.AsColumn
-import           Blueprint.Internal.Schema
 import           Blueprint.Internal.Map
-import           Blueprint.Records
+import           Blueprint.Record
 import           Blueprint.Labels
 
 import           Typemap
@@ -51,21 +48,11 @@ instance HasFLens (Map :: (u -> Type) -> [Mapping Symbol u] -> Type) where
 instance HasFLens Rec' where
   flens p = recLens . flens p
 
-instance HasFLens TRec' where
-  flens p = trecLens . flens p
-
 vlens
   :: ( HasFLens record
      , HasKeyAt k (MappingsOf x) r a)
   => ColKey k -> Lens' (record Identity x) a
 vlens p = flens p . _Identity
-
-clens
-  :: ( table ~ 'SchemaTable tname cols
-     , HasKeyAt k cols r a)
-  => ColKey k
-  -> Lens' (TRec' (OverSql f) table) (f (SqlType a))
-clens p = flens p . overSqlLens
 
 --------------------------------------------------------------------------------
 --  Lenses for newtypes
@@ -73,15 +60,6 @@ clens p = flens p . overSqlLens
 
 recLens :: Lens (Rec' f m) (Rec' g m) (Map f m) (Map g m)
 recLens f (Rec s) = fmap Rec (f s)
-
-trecLens
-  :: (MappingsOf table ~ cols)
-  => Lens (TRec' f table) (TRec' g table) (Rec' f cols) (Rec' g cols)
-trecLens f (TRec s) = fmap TRec (f s)
-
-overSqlLens
-  :: Lens (OverSql f a) (OverSql g a) (f (SqlType a)) (g (SqlType a))
-overSqlLens f (OverSql x) = fmap OverSql (f x)
 
 _Identity :: Lens (Identity a) (Identity b) a b
 _Identity f (Identity x) = fmap Identity (f x)

@@ -25,8 +25,6 @@ import           Data.Singletons.Prelude.List    (Sing (..))
 import           Typemap
 import           Typemap.Mapping
 
-import Blueprint.Internal.Schema
-
 --------------------------------------------------------------------------------
 --  Product profunctor adaptors for type maps
 --------------------------------------------------------------------------------
@@ -103,4 +101,3 @@ type family AllConstrained2Mapping f g c as :: Constraint where
 
 type family MappingsOf (t :: x) :: [Mapping Symbol u]
 type instance MappingsOf (m :: [Mapping Symbol u]) = m
-type instance MappingsOf ('SchemaTable _ m) = m
