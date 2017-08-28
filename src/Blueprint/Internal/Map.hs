@@ -1,40 +1,31 @@
-{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE DeriveFunctor         #-}
-{-# LANGUAGE EmptyCase             #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE KindSignatures        #-}
+{-# LANGUAGE TypeInType            #-}
 {-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PatternSynonyms       #-}
 {-# LANGUAGE PolyKinds             #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE UndecidableInstances  #-}
 
 module Blueprint.Internal.Map where
 
 import           Data.Coerce
 import           Data.Kind                       (Constraint)
-import           GHC.TypeLits                    (Symbol)
-
-import Data.Functor.Const (Const(..))
 
 import           Data.Profunctor                 (Profunctor (..))
 import           Data.Profunctor.Product
 import           Data.Profunctor.Product.Default
 
-import           Blueprint.Internal.Schema
-
-import           Data.Singletons.Decide          ((:~:) (..), Decision (..),
-                                                  SDecide (..))
+import           Data.Singletons.Prelude (Symbol)
 import           Data.Singletons.Prelude.List    (Sing (..))
 
 import           Typemap
-import qualified Typemap.TypeLevel as Map
-import qualified Typemap.Combinators as Map
-import qualified Typemap.Singletons as Map
+import           Typemap.Mapping
+
+import Blueprint.Internal.Schema
 
 --------------------------------------------------------------------------------
 --  Product profunctor adaptors for type maps
@@ -60,7 +51,7 @@ defMapSing
   => Sing m -> p (Map f m) (Map g m)
 defMapSing as = case as of
   SNil -> purePP Empty
-  (SCons (Map.SMapping sk) as') ->
+  (SCons (SMapping sk _) as') ->
     dimap mhead (Ext sk) def **** lmap mtail (defMapSing as')
 
 --------------------------------------------------------------------------------
@@ -81,7 +72,7 @@ instance (Functor f, Functor g, Profunctor p)
     coerce (dimap (fmap f) (fmap g) :: p (f b) (g c) -> p (f a) (g d))
 
 
-newtype Identity a = Identity { getIdentity :: a}
+newtype Identity a = Identity { getIdentity :: a }
   deriving (Functor)
 
 instance {-# INCOHERENT #-}
@@ -108,3 +99,8 @@ type family AllConstrained2Mapping f g c as :: Constraint where
   AllConstrained2Mapping f g c '[] = ()
   AllConstrained2Mapping f g c ((k :-> a) ': as) =
     (c (f a) (g a), AllConstrained2Mapping f g c as)
+
+
+type family MappingsOf (t :: x) :: [Mapping Symbol u]
+type instance MappingsOf (m :: [Mapping Symbol u]) = m
+type instance MappingsOf ('SchemaTable _ m) = m

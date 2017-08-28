@@ -25,14 +25,17 @@ import           Blueprint.Records
 --------------------------------------------------------------------------------
 
 type ColumnsOf table = OverSqlOf Column table
+type ColumnsOf' table = OverSqlOf' Column table
 
+type TableOf' table = Table (ColumnsOf' table) (ColumnsOf' table)
 type TableOf table = Table (ColumnsOf table) (ColumnsOf table)
 
-table' :: SingI table => TableOf table
-table' = makeTable (dimap getOverSql OverSql . required) Table
+table' :: forall table. SingI table => TableOf table
+table' = tableForProxy (Proxy :: Proxy table)
 
-tableFor
+tableForProxy
   :: SingI table
   => proxy table -> TableOf table
-tableFor _ = table'
+tableForProxy p =
+  makeTable (singByProxy p) (dimap getOverSql OverSql . required) Table
 

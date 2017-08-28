@@ -1,6 +1,6 @@
 module Blueprint.Schema
-  ( SchemaColumn(..)
-  , Mapping
+  ( SchemaColumn
+  , Mapping(..)
   , (:->)
   , SchemaTable(..)
   , Schema(..)

@@ -1,35 +1,40 @@
-{-# LANGUAGE DataKinds        #-}
-{-# LANGUAGE RankNTypes       #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators    #-}
-{-# LANGUAGE OverloadedLabels    #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE OverloadedLabels  #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE TypeOperators     #-}
 
-{-# OPTIONS_GHC -fno-warn-unticked-promoted-constructors #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 module Main where
 
+import           Data.Text    (Text)
+
+import           Control.Lens
+
+import           Data.Aeson
 import           Opaleye
-import           Bookkeeper
 
 import           Blueprint
 
 
 type Users = 'SchemaTable "users"
-  '[ "id"           :@ Int
-   , "age"          :@ Int
-   , "phone_number" :@ Int
+  '[ "id"           :-> Int
+   , "age"          :-> Int
+   , "phone_number" :-> Int
    ]
 
 type Products = 'SchemaTable "products"
-  '[ "price" :@ Double
-   , "id"    :@ Int
+  '[ "id"    :-> Int
+   , "name"  :-> Text
+   , "price" :-> Double
    ]
 
 type Purchases = 'SchemaTable "purchases"
-  '[ "user_id"    :@ Int
-   , "product_id" :@ Int
-   , "date"       :@ Int
+  '[ "user_id"    :-> Int
+   , "product_id" :-> Int
+   , "date"       :-> Int
    ]
 
 
@@ -41,22 +46,24 @@ type PublicSchema = 'Schema "public"
 
 
 testProduct :: RecordOf Products
-testProduct = fromBook $
-  emptyBook
-  & #price =: (0.0 :: Double)
+testProduct = TRec $
+  record
   & #id    =: (0 :: Int)
+  & #name  =: "test_product"
+  & #price =: (0.0 :: Double)
 
 
-usersTable :: Table (ColumnsOf Users) (ColumnsOf Users)
-usersTable = table'
+usersTable :: TableOf Users
+usersTable = table' @Users
 
-productsTable :: Table (ColumnsOf Products) (ColumnsOf Products)
-productsTable = table'
+productsTable :: TableOf Products
+productsTable = table' @Products
 
-purchasesTable :: Table (ColumnsOf Purchases) (ColumnsOf Purchases)
-purchasesTable = table'
+purchasesTable :: TableOf Purchases
+purchasesTable = table' @Purchases
 
 
+usersQuery :: Query (ColumnsOf Users)
 usersQuery = queryTable usersTable
 
 
