@@ -37,7 +37,7 @@ library
                      , case-insensitive >= 1.2
                      , profunctors >= 5.2
                      , product-profunctors >= 0.8
-                     , type-level-sets >= 0.8
+                     , typemap
   ghc-options: -Wall
   default-language:    Haskell2010
 

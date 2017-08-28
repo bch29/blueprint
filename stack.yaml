@@ -38,7 +38,7 @@ resolver: nightly-2017-08-24
 packages:
 - .
 - website/
-- location: ../type-level-sets/
+- location: ../typemap/
   extra-dep: true
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)

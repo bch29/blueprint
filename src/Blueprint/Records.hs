@@ -23,8 +23,10 @@ import           Data.Profunctor.Product.Default
 import           Data.Singletons
 import           Data.Singletons.Prelude.List    (Sing (..))
 
-import           Data.Type.Functor.Map           (Map (..))
-import qualified Data.Type.Functor.Map as Map
+import           Typemap
+import qualified Typemap.TypeLevel as Map
+import qualified Typemap.Combinators as Map
+import qualified Typemap.Singletons as Map
 
 import           Blueprint.AsColumn
 import           Blueprint.Internal.Schema
@@ -102,10 +104,10 @@ makeTable f g = case (sing :: Sing table) of
 makeColumns
   :: (ProductProfunctor p)
   => (forall a. String -> p (f a) (g a))
-  -> Sing cols
+  -> Sing (cols :: [SchemaColumn])
   -> Map (Procompose' f g p) cols
 makeColumns f = \case
   SNil -> Empty
-  SCons (SMapping sName _) sCols ->
-    Ext (varOf sName) (Procompose' (f (Text.unpack $ fromSing sName)))
+  SCons (Map.SMapping sName) sCols ->
+    Ext sName (Procompose' (f (Text.unpack $ fromSing sName)))
     (makeColumns f sCols)

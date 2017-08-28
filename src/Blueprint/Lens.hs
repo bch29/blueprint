@@ -28,7 +28,8 @@ import           Blueprint.Internal.Map
 import           Blueprint.Records
 import           Blueprint.Labels
 
-import           Data.Type.Functor.Map
+import           Typemap.Core
+import           Typemap.Lens
 
 
 --------------------------------------------------------------------------------
@@ -71,31 +72,3 @@ overSqlLens f (OverSql x) = fmap OverSql (f x)
 
 _Identity :: Lens (Identity a) (Identity b) a b
 _Identity f (Identity x) = fmap Identity (f x)
-
---------------------------------------------------------------------------------
---  Lenses for maps
---------------------------------------------------------------------------------
-
-class (MapFind k m ~ r, FoundType r ~ a) => AtKey k m r a where
-  klens :: proxy k -> Lens' (Map f m) (f a)
-
-instance AtKey k ((k ':-> a) ': m) ('Here a) a where
-  klens _ f (Ext k v s) = fmap (\v' -> Ext k v' s) (f v)
-
-instance
-  ( AtKey k m r a
-  , MapFind k (kvp ': m) ~ ('There r)
-  ) => AtKey k (kvp ': m) ('There r) a where
-  klens p f (Ext k v s) = fmap (Ext k v) (klens p f s)
-
-type family MapFind k m where
-  MapFind k ((k ':-> a) ': m) = 'Here a
-  MapFind k (_ ': m) = 'There (MapFind k m)
-
-data Found v
-  = Here v
-  | There (Found v)
-
-type family FoundType r where
-  FoundType ('Here a) = a
-  FoundType ('There r) = FoundType r

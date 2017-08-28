@@ -31,8 +31,10 @@ import           Data.Singletons.Decide          ((:~:) (..), Decision (..),
                                                   SDecide (..))
 import           Data.Singletons.Prelude.List    (Sing (..))
 
-import           Data.Type.Functor.Map           (Map (..), Mapping (..), Nub,
-                                                  Var (..))
+import           Typemap
+import qualified Typemap.TypeLevel as Map
+import qualified Typemap.Combinators as Map
+import qualified Typemap.Singletons as Map
 
 --------------------------------------------------------------------------------
 --  Product profunctor adaptors for type maps
@@ -58,32 +60,8 @@ defMapSing
   => Sing m -> p (Map f m) (Map g m)
 defMapSing as = case as of
   SNil -> purePP Empty
-  (SCons (SMapping sk _) as') ->
-    dimap mhead (Ext (varOf sk)) def **** lmap mtail (defMapSing as')
-
---------------------------------------------------------------------------------
---  Nub for singletons
---------------------------------------------------------------------------------
-
--- singToMap :: Sing as -> Map (Const ()) as
--- singToMap = \case
---   SNil -> Empty
---   SCons (SMapping k _) xs -> Ext (varOf k) (Const ()) (singToMap xs)
-
--- mapToSing :: Map f as -> Sing as
--- mapToSing = \case
---   Empty -> SNil
---   Ext 
-
-
--- sNub :: Sing (as :: [Mapping Symbol v]) -> Sing (Nub as)
--- sNub = \case
---   SNil -> SNil
---   SCons x SNil -> SCons x SNil
---   SCons (SMapping sk sv) xs@(SCons (SMapping sk' sv') xs') ->
---     case sk %~ sk' of
---       Proved Refl -> _
---       Disproved f -> _
+  (SCons (Map.SMapping sk) as') ->
+    dimap mhead (Ext sk) def **** lmap mtail (defMapSing as')
 
 --------------------------------------------------------------------------------
 --  Pro/functor newtypes
@@ -120,10 +98,7 @@ instance {-# OVERLAPPABLE #-}
 --  Other
 --------------------------------------------------------------------------------
 
-varOf :: proxy k -> Var k
-varOf _ = Var
-
-mhead :: Map f ((k ':-> a) ': m) -> f a
+mhead :: Map f ((k :-> a) ': m) -> f a
 mhead (Ext _ v _) = v
 
 mtail :: Map f (x ': m) -> Map f m
@@ -131,5 +106,5 @@ mtail (Ext _ _ s) = s
 
 type family AllConstrained2Mapping f g c as :: Constraint where
   AllConstrained2Mapping f g c '[] = ()
-  AllConstrained2Mapping f g c ((k ':-> a) ': as) =
+  AllConstrained2Mapping f g c ((k :-> a) ': as) =
     (c (f a) (g a), AllConstrained2Mapping f g c as)
