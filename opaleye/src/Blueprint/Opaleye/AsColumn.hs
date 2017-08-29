@@ -10,7 +10,7 @@
 {-# LANGUAGE TypeOperators          #-}
 {-# LANGUAGE UndecidableInstances   #-}
 
-module Blueprint.AsColumn where
+module Blueprint.Opaleye.AsColumn where
 
 import           Data.Int             (Int16, Int32, Int64)
 

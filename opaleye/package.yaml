@@ -13,8 +13,24 @@ extra-source-files:
 
 dependencies:
   - base >= 4.7 && < 5
-  - blueprint
+
+  - scientific
+  - text
+  - time
+  - uuid-types
+  - case-insensitive
+
+  - singletons
+  - profunctors
+  - product-profunctors
+  - lens
+
   - opaleye
+
+  - typemap
+  - blueprint
 
 library:
   source-dirs:      src
+
+  ghc-options: -Wall
