@@ -67,6 +67,10 @@ instance ( ProductProfunctor p
 
   def = dimap (getRecMap . getTRec) (TRec . Rec) (defMapSing sing)
 
+instance (table ~ 'TableBP tname cols, Show (Rec' f cols)) => Show (TRec' f table) where
+  show (TRec r) =
+    "TRec $ " ++ show r
+
 --------------------------------------------------------------------------------
 -- * Functors over SQL types
 

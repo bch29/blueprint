@@ -42,3 +42,28 @@ library
       Blueprint.Opaleye.Internal.Schema
       Blueprint.Opaleye.Schema
   default-language: Haskell2010
+
+test-suite blueprint-opaleye-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >= 4.7 && < 5
+    , scientific
+    , text
+    , time
+    , uuid-types
+    , case-insensitive
+    , singletons
+    , profunctors
+    , product-profunctors
+    , lens
+    , opaleye
+    , typemap
+    , blueprint
+    , base
+    , blueprint
+    , blueprint-opaleye
+  default-language: Haskell2010

@@ -36,6 +36,7 @@ import           Data.Monoid (All(..))
 import           Data.Functor.Const
 
 import           Data.Aeson
+import qualified Data.Text as Text
 
 import           Data.Profunctor                 (Profunctor (..))
 import           Data.Profunctor.Product
@@ -133,7 +134,7 @@ showFieldId
   -> Map.Constrained Show Identity a
   -> Const String a
 showFieldId k (Map.Constrained (Identity v)) =
-  Const $ "#" ++ show k ++ " := " ++ showsPrec 3 v ""
+  Const $ "#" ++ Text.unpack (fromSing k) ++ " := " ++ showsPrec 3 v ""
 
 instance (Map.ValsSatisfy Show m) => Show (Record' m) where
   show = ("record " ++)
