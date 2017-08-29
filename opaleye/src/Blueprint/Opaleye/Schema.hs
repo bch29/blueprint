@@ -1,14 +1,21 @@
 module Blueprint.Opaleye.Schema
-  ( Mapping(..)
-  , (:->)
-  , Blueprint
-  , TableBlueprint(..)
+  (
+    -- * SQL blueprints
+    TableBlueprint
   , SchemaBlueprint(..)
+    -- * Blueprint kinds
+  , BpkTable(..)
+  , T
+    -- * Re-exports from "Blueprint"
+  , Blueprint
+  , (:@)
+  , Mapping(..)
+  , (:->)
   ) where
 
 import           Typemap
 
-import           Blueprint.Record
+import           Blueprint.Core
 
-import           Blueprint.Opaleye.Internal.Schema
+import           Blueprint.Opaleye.Schema.Core
 

@@ -49,6 +49,7 @@ import           Blueprint.Core
 import           Blueprint.Aeson
 import           Blueprint.Internal.Map
 import           Blueprint.Labels
+import           Blueprint.Classes
 
 --------------------------------------------------------------------------------
 -- General records
@@ -64,7 +65,7 @@ type Record b = Record' (Normalize b)
 record :: Rec f (d :@ '[])
 record = Rec Empty
 
-normalizeRec :: Rec' f m -> Rec f m
+normalizeRec :: Rec' f b -> Rec f b
 normalizeRec (Rec s) = Rec (Map.asMap s)
 
 infix 2 =*
@@ -122,18 +123,21 @@ instance ( ProductProfunctor p
   def = dimap getRecMap Rec (defMapSing sing)
 
 
-showFieldId
+showFieldPair
   :: Sing (k :: Symbol)
-  -> Map.Constrained Show Identity a
-  -> Const String a
-showFieldId k (Map.Constrained (Identity v)) =
-  Const $ "#" ++ Text.unpack (fromSing k) ++ " := " ++ showsPrec 3 v ""
+  -> Map.Constrained Show f a
+  -> Const (String, Some Show f) a
+showFieldPair k (Map.Constrained v) =
+  Const $ (Text.unpack (fromSing k), Some v)
 
-instance (b ~ (d :@ m), ValsSatisfy Show b) => Show (Record' b) where
-  show = ("record " ++)
-       . concatMap ("\n& " ++)
+instance ( b ~ ((d :: dkind) :@ m)
+         , SingI d
+         , FormatShowBlueprint f dkind
+         , ValsSatisfy Show b
+         ) => Show (Rec' f b) where
+  show = formatShowRecord (Proxy :: Proxy d)
        . Map.toList
-       . Map.mapWithKey showFieldId
+       . Map.mapWithKey showFieldPair
        . Map.constrained
        . getRecMap
 

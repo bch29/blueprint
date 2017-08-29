@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs                #-}
+{-# LANGUAGE KindSignatures       #-}
 {-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeInType           #-}
 {-# LANGUAGE TypeOperators        #-}
@@ -23,8 +24,9 @@ import qualified Typemap.TypeLevel        as Map
 -- blueprints for records.
 --
 -- The two kind parameters are:
--- - @d@ is the kind of the arbitrary attached data which is used at the type
---   level by various combinators.
+-- - @t@ is the kind of blueprint, which affects what can be built from it. For
+--   example, 'BpkSimple' is a simple blueprint kind which can only be used for
+--   forming records.
 -- - @u@ is the 'universe' of values that the blueprint refers to. For example,
 --   if @u ~ *@, then it refers to normal types.
 --
@@ -32,27 +34,39 @@ import qualified Typemap.TypeLevel        as Map
 -- of kind @d@. The second is a list of key-value pairs, mapping field names to
 -- the type contained in that field. Records formed from the blueprint will have
 -- those fields.
-data Blueprint' d u = BP d [Mapping Symbol u]
+data Blueprint t u = BP t [Mapping Symbol u]
+
+-- | The simple blueprint kind, for normal records. See 'SimpleBP'.
+data BpkSimple = BPSimple
+
+-- | The single type of kind 'BpkSimple'.
+type S = 'BPSimple
 
 -- | A kind of simple blueprints with no attached data and normal type-level
 -- values.
-type Blueprint = Blueprint' () Type
+type SBlueprint = Blueprint BpkSimple Type
 
 -- | Shorthand for constructing blueprints.
 type (:@) = 'BP
 
 -- | A simple blueprint with no attached data and the given key-value pairs.
-type SimpleBP m = () :@ m
+type SimpleBP m = (S :@ m :: SBlueprint)
 
 --------------------------------------------------------------------------------
 --  Singletons
 --------------------------------------------------------------------------------
 
-data instance Sing (d :@ m) where
+data instance Sing (b :: Blueprint dkind u) where
   (:%@) :: Sing d -> Sing m -> Sing (d :@ m)
 
 instance (SingI d, SingI m) => SingI (d :@ m) where
   sing = sing :%@ sing
+
+data instance Sing (s :: BpkSimple) where
+  SSimple :: Sing S
+
+instance SingI S where
+  sing = SSimple
 
 --------------------------------------------------------------------------------
 --  Type Families

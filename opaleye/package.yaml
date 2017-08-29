@@ -11,29 +11,29 @@ category:            Other
 extra-source-files:
 - README.md
 
-dependencies:
-  - base >= 4.7 && < 5
-
-  - scientific
-  - text
-  - time
-  - uuid-types
-  - case-insensitive
-
-  - singletons
-  - profunctors
-  - product-profunctors
-  - lens
-
-  - opaleye
-
-  - typemap
-  - blueprint
-
 library:
   source-dirs:      src
 
   ghc-options: -Wall
+
+  dependencies:
+    - base >= 4.7 && < 5
+  
+    - scientific
+    - text
+    - time
+    - uuid-types
+    - case-insensitive
+  
+    - singletons
+    - profunctors
+    - product-profunctors
+    - lens
+  
+    - opaleye
+  
+    - typemap
+    - blueprint
 
 tests:
   blueprint-opaleye-test:

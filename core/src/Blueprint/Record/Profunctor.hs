@@ -44,8 +44,8 @@ Produces a profunctor between normalized records.
 
 -}
 purePPRec
-  :: (b ~ (x :@ m), SingI m, ProductProfunctor p)
-  => proxy (b :: Blueprint' d u)
+  :: (b ~ (d :@ m), SingI m, ProductProfunctor p)
+  => proxy (b :: Blueprint t u)
   -> (forall (k :: Symbol) (a :: u). Sing k -> Proxy a -> p (f a) (g a))
   -> p (Rec f b) (Rec g b)
 purePPRec (_ :: proxy (d :@ m)) f =
@@ -60,7 +60,7 @@ records over the same fields.
 
 -}
 purePPRec'
-  :: (b ~ (d :@ m), SingI m, ProductProfunctor p)
+  :: ((b :: Blueprint t u) ~ (d :@ m), SingI m, ProductProfunctor p)
   => (forall (k :: Symbol) (a :: u). Sing k -> Proxy a -> p (f a) (g a))
   -> p (Rec' f b) (Rec' g b)
 purePPRec' f

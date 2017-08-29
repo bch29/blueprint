@@ -26,14 +26,14 @@ library:
   - profunctors >=5.2 && <6
   - product-profunctors >=0.8 && <1
   - typemap
-tests:
-  blueprint-test:
-    main: Spec.hs
-    source-dirs: test
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - base
-    - blueprint
+# tests:
+#   blueprint-test:
+#     main: Spec.hs
+#     source-dirs: test
+#     ghc-options:
+#     - -threaded
+#     - -rtsopts
+#     - -with-rtsopts=-N
+#     dependencies:
+#     - base
+#     # - blueprint
