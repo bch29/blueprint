@@ -7,7 +7,7 @@ module Blueprint.Labels where
 
 import           GHC.OverloadedLabels
 
-data ColKey (key :: k) = ColKey
+data BlueKey (key :: k) = BlueKey
 
-instance (k ~ k') => IsLabel k (ColKey k') where
-  fromLabel = ColKey
+instance (k ~ k') => IsLabel k (BlueKey k') where
+  fromLabel = BlueKey

@@ -26,7 +26,7 @@ library
     , opaleye
   exposed-modules:
       Blueprint.AsColumn
-      Blueprint.InternalSchema
+      Blueprint.Internal.Schema
       Blueprint.Opaleye
       Blueprint.Other
       Blueprint.Schema

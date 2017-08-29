@@ -1,18 +1,27 @@
-{-# LANGUAGE GADTs                  #-}
-{-# LANGUAGE LambdaCase             #-}
-{-# LANGUAGE RankNTypes             #-}
-{-# LANGUAGE TypeInType             #-}
-{-# LANGUAGE TypeOperators          #-}
+{-# LANGUAGE GADTs         #-}
+{-# LANGUAGE LambdaCase    #-}
+{-# LANGUAGE RankNTypes    #-}
+{-# LANGUAGE TypeInType    #-}
+{-# LANGUAGE TypeOperators #-}
 
-module Blueprint.Record.Profunctor where
+{-|
 
-import qualified Data.Text                    as Text
+Profunctor combinators for blueprint records.
 
-import           Data.Profunctor
+-}
+module Blueprint.Record.Profunctor
+  ( purePPRec
+  , purePPRec'
+  , pRec
+  , Procompose(..)
+  ) where
+
+import           Data.Profunctor              hiding (Mapping)
 import           Data.Profunctor.Product
 
 import           Data.Singletons
 import           Data.Singletons.Prelude.List (Sing (..))
+import           Data.Singletons.TypeLits     (Symbol)
 
 import           Typemap
 import           Typemap.Mapping
@@ -21,33 +30,81 @@ import qualified Typemap.Singletons           as Map
 import           Blueprint.Internal.Map
 import           Blueprint.Record
 
+{-|
+
+This is a higher-order version of 'purePP' for 'ProductProfunctor'. Given a way
+to construct a @p@ between values for each field, construct a @p@ between
+records over the same fields.
+
+Produces a profunctor between normalized records.
+
+-}
+purePPRec
+  :: (SingI (m :: Blueprint' u), ProductProfunctor p)
+  => proxy m
+  -> (forall (k :: Symbol) (a :: u). Sing k -> Proxy a -> p (f a) (g a))
+  -> p (Rec f m) (Rec g m)
+purePPRec p f = withSingI (Map.sAsMap (singByProxy p)) (purePPRec' f)
+
+{-|
+
+This is a higher-order version of 'purePP' for 'ProductProfunctor'. Given a way
+to construct a @p@ between values for each field, construct a @p@ between
+records over the same fields.
+
+-}
+purePPRec'
+  :: (SingI (m :: Blueprint' u), ProductProfunctor p)
+  => (forall (k :: Symbol) (a :: u). Sing k -> Proxy a -> p (f a) (g a))
+  -> p (Rec' f m) (Rec' g m)
+purePPRec' f
+  = dimap getRecMap Rec
+  . pMap
+  . purePPMap f
+  $ sing
+
+{-|
+
+Product profunctor adaptor for records. Having a record over @'Procompose\'' f g
+p@ is to say that for each field in the blueprint with value type @a@, we @p (f
+a) (g a)@ in the record.
+
+-}
+pRec
+  :: (ProductProfunctor p)
+  => Rec' (Procompose f g p) (m :: Blueprint' u)
+  -> p (Rec' f m) (Rec' g m)
+pRec = dimap getRecMap Rec . pMap . getRecMap
+
 --------------------------------------------------------------------------------
--- * Constructing profunctors from tables
+--  Types
+--------------------------------------------------------------------------------
 
-makeTable
+newtype Procompose f g p a = Procompose { getProcompose :: p (f a) (g a) }
+
+-- TODO: Functor instance for 'Procompose' (requires contravariant f)
+
+--------------------------------------------------------------------------------
+--  Combinators for maps
+--------------------------------------------------------------------------------
+
+purePPMap
   :: (ProductProfunctor p)
-
-  => Sing (m :: Blueprint' u)
-  -> (forall a. String -> p (f a) (g a))
-  -- ^ Lift each column into the profunctor @p@.
-
-  -> (p (Rec f m) (Rec g m) -> p' (Rec f m) (Rec g m))
-  -- ^ Lift @p@ over table records to @p'@ over table records.
-
-  -> p' (Rec f m) (Rec g m)
-makeTable xs f g =
-    g ( dimap getRecMap Rec
-      . pMap
-      . makeColumns f
-      $ Map.sAsMap xs)
-
-makeColumns
-  :: (ProductProfunctor p)
-  => (forall a. String -> p (f a) (g a))
-  -> Sing (cols :: Blueprint' u)
-  -> Map (Procompose' f g p) cols
-makeColumns f = \case
+  => (forall (k1 :: k) (a :: u). Sing k1 -> Proxy a -> p (f a) (g a))
+  -> Sing (m :: [Mapping k u])
+  -> Map (Procompose f g p) m
+purePPMap f = \case
   SNil -> Empty
-  SCons (SMapping sName _) sCols ->
-    Ext sName (Procompose' (f (Text.unpack $ fromSing sName)))
-    (makeColumns f sCols)
+  SCons (SMapping k v) sCols ->
+    Ext k (Procompose (f k v))
+    (purePPMap f sCols)
+
+pMap
+  :: (ProductProfunctor p)
+  => Map (Procompose f g p) m
+  -> p (Map f m) (Map g m)
+pMap = \case
+  Empty -> purePP Empty
+  Ext k (Procompose v) s ->
+    dimap mhead (Ext k) v ****
+    lmap mtail (pMap s)

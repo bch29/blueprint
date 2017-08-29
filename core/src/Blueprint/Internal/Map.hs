@@ -12,7 +12,6 @@
 
 module Blueprint.Internal.Map where
 
-import           Data.Coerce
 import           Data.Kind                       (Constraint)
 
 import           Data.Profunctor                 (Profunctor (..))
@@ -24,20 +23,6 @@ import           Data.Singletons.Prelude.List    (Sing (..))
 
 import           Typemap
 import           Typemap.Mapping
-
---------------------------------------------------------------------------------
---  Product profunctor adaptors for type maps
---------------------------------------------------------------------------------
-
-pMap
-  :: (ProductProfunctor p)
-  => Map (Procompose' f g p) as
-  -> p (Map f as) (Map g as)
-pMap = \case
-  Empty -> purePP Empty
-  Ext k (Procompose' v) s ->
-    dimap mhead (Ext k) v ****
-    lmap mtail (pMap s)
 
 --------------------------------------------------------------------------------
 --  Product profunctor default for type maps
@@ -56,22 +41,12 @@ defMapSing as = case as of
 --  Pro/functor newtypes
 --------------------------------------------------------------------------------
 
-newtype Procompose f g p a b = Procompose { unProcompose :: p (f a) (g b) }
-newtype Procompose' f g p a = Procompose' { getProcompose' :: p (f a) (g a) }
-
-instance
-  ( Default p (f a) (g b)
-  ) => Default (Procompose f g p) a b where
-  def = Procompose def
-
-instance (Functor f, Functor g, Profunctor p)
-  => Profunctor (Procompose f g p) where
-  dimap (f :: a -> b) (g :: c -> d) =
-    coerce (dimap (fmap f) (fmap g) :: p (f b) (g c) -> p (f a) (g d))
-
-
+-- | We have to define a new identity functor because the wrong instance is
+-- already defined for 'Default' over the standard identity functor.
+--
+-- TODO: Consider submitting a pull request in product-profunctors to fix this.
 newtype Identity a = Identity { getIdentity :: a }
-  deriving (Functor)
+  deriving (Functor, Eq, Ord)
 
 instance {-# INCOHERENT #-}
   ( Profunctor p , Default p a b
