@@ -44,6 +44,7 @@ library
   exposed-modules:
       Blueprint
       Blueprint.Aeson
+      Blueprint.Core
       Blueprint.Internal.Map
       Blueprint.Labels
       Blueprint.Lens

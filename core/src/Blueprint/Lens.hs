@@ -11,19 +11,15 @@
 
 module Blueprint.Lens
   (
-    -- * Lenses for tables
-    vlens
-  , HasFLens(..)
-    -- * Lenses for maps
-  , HasKeyAt(..)
-  , MapFind
+    -- * Lenses for records
+    flens
+  , vlens
+  , _Rec
   ) where
-
-import           Data.Kind              (Type)
-import           GHC.TypeLits           (Symbol)
 
 import           Control.Lens.Lens
 
+import           Blueprint.Core
 import           Blueprint.Internal.Map
 import           Blueprint.Labels
 import           Blueprint.Record
@@ -36,39 +32,38 @@ import           Typemap.Lens
 --  Lenses for tables
 --------------------------------------------------------------------------------
 
-class HasFLens (record :: (u -> Type) -> t -> Type) where
-  {-|
+{-|
 
-  > flens :: (HasKeyAt k m r a) => BlueKey k -> Lens' (Rec f m) (f a)
+Lens into a functorial member of a general blueprinted record.
 
-  -}
-  flens
-    :: (m ~ MappingsOf x, HasKeyAt k m r a)
-    => BlueKey k
-    -> Lens' (record f x) (f a)
+> flens :: (HasKeyAt k (MappingOf b) r a) => BlueKey k -> Lens' (Rec f b) (f a)
 
-instance HasFLens (Map :: (u -> Type) -> [Mapping Symbol u] -> Type) where
-  flens (p :: BlueKey (k :: Symbol)) = findl p
-
-instance HasFLens Rec' where
-  flens p = _Rec . flens p
+-}
+flens
+  :: (b ~ (d :@ m), HasKeyAt k m r a)
+  => BlueKey k
+  -> Lens' (Rec' f b) (f a)
+flens p = _Rec . klens p
 
 {-|
 
-> vlens :: (HasKeyAt k m r a) => BlueKey k -> Lens' (Record m) a
+Lens into a value member of a 'Record'.
+
+> vlens :: (HasKeyAt k (MappingOf b) r a) => BlueKey k -> Lens' (Record b) a
 
 -}
 vlens
-  :: ( HasFLens record
-     , HasKeyAt k (MappingsOf x) r a)
-  => BlueKey k -> Lens' (record Identity x) a
+  :: ( b ~ (d :@ m)
+     , HasKeyAt k m r a)
+  => BlueKey k -> Lens' (Record' b) a
 vlens p = flens p . _Identity
 
 --------------------------------------------------------------------------------
 --  Lenses for newtypes
 --------------------------------------------------------------------------------
 
-_Rec :: Lens (Rec' f m) (Rec' g m) (Map f m) (Map g m)
+-- | Lens into a record's underlying 'Map'.
+_Rec :: (b ~ (d :@ m)) => Lens (Rec' f b) (Rec' g b) (Map f m) (Map g m)
 _Rec f (Rec s) = fmap Rec (f s)
 
 _Identity :: Lens (Identity a) (Identity b) a b

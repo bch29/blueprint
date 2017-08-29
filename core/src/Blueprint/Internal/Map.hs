@@ -18,7 +18,6 @@ import           Data.Profunctor                 (Profunctor (..))
 import           Data.Profunctor.Product
 import           Data.Profunctor.Product.Default
 
-import           Data.Singletons.Prelude (Symbol)
 import           Data.Singletons.Prelude.List    (Sing (..))
 
 import           Typemap
@@ -72,7 +71,3 @@ type family AllConstrained2Mapping f g c as :: Constraint where
   AllConstrained2Mapping f g c '[] = ()
   AllConstrained2Mapping f g c ((k :-> a) ': as) =
     (c (f a) (g a), AllConstrained2Mapping f g c as)
-
-
-type family MappingsOf (t :: x) :: [Mapping Symbol u]
-type instance MappingsOf (m :: [Mapping Symbol u]) = m

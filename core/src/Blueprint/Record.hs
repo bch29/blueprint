@@ -12,11 +12,8 @@
 
 module Blueprint.Record
   (
-    -- * Blueprints
-    Blueprint
-  , Blueprint'
     -- * Records over normal values
-  , Record'
+    Record'
   , Record
   , (=:)
     -- * Records over functorial values
@@ -30,7 +27,6 @@ module Blueprint.Record
   ) where
 
 import           Data.Function                   ((&))
-import           Data.Kind                       (Type)
 import           Data.Monoid (All(..))
 
 import           Data.Functor.Const
@@ -48,29 +44,24 @@ import           Data.Singletons.TypeLits        (Symbol)
 
 import           Typemap
 import qualified Typemap.Combinators             as Map
-import qualified Typemap.TypeLevel               as Map
 
+import           Blueprint.Core
 import           Blueprint.Aeson
 import           Blueprint.Internal.Map
 import           Blueprint.Labels
 
 --------------------------------------------------------------------------------
--- Record Blueprints
-
-type Blueprint' u = [Mapping Symbol u]
-type Blueprint = [Mapping Symbol Type]
-
---------------------------------------------------------------------------------
 -- General records
 
-newtype Rec' f (m :: Blueprint' u) = Rec { getRecMap :: Map f m }
+data Rec' f b where
+  Rec :: { getRecMap :: Map f m } -> Rec' f (d :@ m)
 
-type Rec f m = Rec' f (Map.AsMap m)
+type Rec f b = Rec' f (Normalize b)
 
-type Record' = Rec' Identity
-type Record (m :: Blueprint) = Record' (Map.AsMap m)
+type Record' b = Rec' Identity b
+type Record b = Record' (Normalize b)
 
-record :: Rec f '[]
+record :: Rec f (d :@ '[])
 record = Rec Empty
 
 normalizeRec :: Rec' f m -> Rec f m
@@ -89,8 +80,8 @@ already exists.
 -}
 (=*) :: (SingI k)
      => BlueKey k -> f a
-     -> Rec' f m
-     -> Rec' f (Map.Insert (k :-> a) m)
+     -> Rec' f b
+     -> Rec' f (Insert (k :-> a) b)
 ((_ :: BlueKey k) =* x) (Rec s) =
   Rec (Map.mapInsert (sing :: Sing k) x s)
 
@@ -104,27 +95,29 @@ already exists.
 -}
 (=:) :: (SingI k)
      => BlueKey k -> a
-     -> Record' m
-     -> Record' (Map.Insert (k :-> a) m)
+     -> Record' b
+     -> Record' (Insert (k :-> a) b)
 k =: x = k =* Identity x
 
 --------------------------------------------------------------------------------
 -- Instances
 
-instance (Map.ValsSatisfy ToJSON m) => ToJSON (Record' m) where
+instance (ValsSatisfy ToJSON b) => ToJSON (Record' b) where
   toJSON (Rec s) = mapToJSON s
 
 
-instance (Map.ValsSatisfy FromJSON m
+instance ( b ~ (d :@ m)
+         , ValsSatisfy FromJSON b
          , SingI m
-         ) => FromJSON (Record' m) where
+         ) => FromJSON (Record' b) where
   parseJSON = fmap Rec . withObject "Record" (\o -> mapFromJSON o sing)
 
 
 instance ( ProductProfunctor p
          , AllConstrained2Mapping f g (Default p) m
+         , b ~ (d :@ m)
          , SingI m
-         ) => Default p (Rec' f m) (Rec' g m) where
+         ) => Default p (Rec' f b) (Rec' g b) where
 
   def = dimap getRecMap Rec (defMapSing sing)
 
@@ -136,7 +129,7 @@ showFieldId
 showFieldId k (Map.Constrained (Identity v)) =
   Const $ "#" ++ Text.unpack (fromSing k) ++ " := " ++ showsPrec 3 v ""
 
-instance (Map.ValsSatisfy Show m) => Show (Record' m) where
+instance (b ~ (d :@ m), ValsSatisfy Show b) => Show (Record' b) where
   show = ("record " ++)
        . concatMap ("\n& " ++)
        . Map.toList
@@ -145,7 +138,7 @@ instance (Map.ValsSatisfy Show m) => Show (Record' m) where
        . getRecMap
 
 
-instance (Map.ValsSatisfy Eq m) => Eq (Record' m) where
+instance (ValsSatisfy Eq b) => Eq (Record' b) where
   Rec s == Rec t =
     getAll $ Map.fold $
     Map.zipWith
@@ -154,7 +147,7 @@ instance (Map.ValsSatisfy Eq m) => Eq (Record' m) where
 
 -- | The 'Ord' instance might do unexpected things with normalized records
 -- because it compares in order of fields, and normalization changes the order.
-instance (Map.ValsSatisfy Eq m, Map.ValsSatisfy Ord m) => Ord (Record' m) where
+instance (ValsSatisfy Eq b, ValsSatisfy Ord b) => Ord (Record' b) where
   compare (Rec s) (Rec t) =
     Map.fold $
     Map.zipWith

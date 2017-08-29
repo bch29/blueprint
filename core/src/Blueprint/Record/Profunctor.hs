@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs         #-}
 {-# LANGUAGE LambdaCase    #-}
 {-# LANGUAGE RankNTypes    #-}
@@ -10,7 +12,8 @@ Profunctor combinators for blueprint records.
 
 -}
 module Blueprint.Record.Profunctor
-  ( purePPRec
+  (
+    purePPRec
   , purePPRec'
   , pRec
   , Procompose(..)
@@ -29,6 +32,7 @@ import qualified Typemap.Singletons           as Map
 
 import           Blueprint.Internal.Map
 import           Blueprint.Record
+import           Blueprint.Core
 
 {-|
 
@@ -40,11 +44,13 @@ Produces a profunctor between normalized records.
 
 -}
 purePPRec
-  :: (SingI (m :: Blueprint' u), ProductProfunctor p)
-  => proxy m
+  :: (b ~ (x :@ m), SingI m, ProductProfunctor p)
+  => proxy (b :: Blueprint' d u)
   -> (forall (k :: Symbol) (a :: u). Sing k -> Proxy a -> p (f a) (g a))
-  -> p (Rec f m) (Rec g m)
-purePPRec p f = withSingI (Map.sAsMap (singByProxy p)) (purePPRec' f)
+  -> p (Rec f b) (Rec g b)
+purePPRec (_ :: proxy (d :@ m)) f =
+  let sm = sing :: Sing m
+  in withSingI (Map.sAsMap sm) (purePPRec' f)
 
 {-|
 
@@ -54,9 +60,9 @@ records over the same fields.
 
 -}
 purePPRec'
-  :: (SingI (m :: Blueprint' u), ProductProfunctor p)
+  :: (b ~ (d :@ m), SingI m, ProductProfunctor p)
   => (forall (k :: Symbol) (a :: u). Sing k -> Proxy a -> p (f a) (g a))
-  -> p (Rec' f m) (Rec' g m)
+  -> p (Rec' f b) (Rec' g b)
 purePPRec' f
   = dimap getRecMap Rec
   . pMap
@@ -71,9 +77,9 @@ a) (g a)@ in the record.
 
 -}
 pRec
-  :: (ProductProfunctor p)
-  => Rec' (Procompose f g p) (m :: Blueprint' u)
-  -> p (Rec' f m) (Rec' g m)
+  :: (b ~ (d :@ m), ProductProfunctor p)
+  => Rec' (Procompose f g p) b
+  -> p (Rec' f b) (Rec' g b)
 pRec = dimap getRecMap Rec . pMap . getRecMap
 
 --------------------------------------------------------------------------------
@@ -82,7 +88,7 @@ pRec = dimap getRecMap Rec . pMap . getRecMap
 
 newtype Procompose f g p a = Procompose { getProcompose :: p (f a) (g a) }
 
--- TODO: Functor instance for 'Procompose' (requires contravariant f)
+-- TODO: Functor / Contravariant instances for 'Procompose'
 
 --------------------------------------------------------------------------------
 --  Combinators for maps
