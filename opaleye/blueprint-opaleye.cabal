@@ -32,6 +32,7 @@ library
     , profunctors
     , product-profunctors
     , lens
+    , pretty
     , opaleye
     , typemap
     , blueprint
@@ -41,7 +42,9 @@ library
       Blueprint.Opaleye.Core
       Blueprint.Opaleye.Schema
       Blueprint.Opaleye.Schema.Core
-      Blueprint.Opaleye.Schema.SQL
+      Blueprint.Opaleye.Sql.Ast
+      Blueprint.Opaleye.Sql.Generate
+      Blueprint.Opaleye.Sql.Print
   default-language: Haskell2010
 
 test-suite blueprint-opaleye-test

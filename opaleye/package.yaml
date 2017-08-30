@@ -29,6 +29,8 @@ library:
     - profunctors
     - product-profunctors
     - lens
+
+    - pretty
   
     - opaleye
   
